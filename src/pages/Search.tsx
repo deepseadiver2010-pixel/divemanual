@@ -98,7 +98,7 @@ export default function Search() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-[hsl(var(--navy-primary))]">
-            <Search className="w-5 h-5" />
+            <SearchIcon className="w-5 h-5" />
             Navy Diving Manual Search
           </CardTitle>
         </CardHeader>
