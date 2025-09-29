@@ -14,16 +14,559 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      analytics_search: {
+        Row: {
+          clicked_result_id: string | null
+          created_at: string
+          filters: Json | null
+          id: string
+          query: string
+          results_count: number | null
+          search_type: string | null
+          user_id: string | null
+        }
+        Insert: {
+          clicked_result_id?: string | null
+          created_at?: string
+          filters?: Json | null
+          id?: string
+          query: string
+          results_count?: number | null
+          search_type?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          clicked_result_id?: string | null
+          created_at?: string
+          filters?: Json | null
+          id?: string
+          query?: string
+          results_count?: number | null
+          search_type?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          citations: Json | null
+          content: string
+          created_at: string
+          id: string
+          role: string
+          session_id: string
+        }
+        Insert: {
+          citations?: Json | null
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          session_id: string
+        }
+        Update: {
+          citations?: Json | null
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          title: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          title?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chunks: {
+        Row: {
+          chapter: string | null
+          content: string
+          created_at: string
+          document_id: string
+          embedding: string | null
+          id: string
+          page_id: string | null
+          page_number: number | null
+          section: string | null
+          token_count: number | null
+          volume: string | null
+          warning_flags: string[] | null
+        }
+        Insert: {
+          chapter?: string | null
+          content: string
+          created_at?: string
+          document_id: string
+          embedding?: string | null
+          id?: string
+          page_id?: string | null
+          page_number?: number | null
+          section?: string | null
+          token_count?: number | null
+          volume?: string | null
+          warning_flags?: string[] | null
+        }
+        Update: {
+          chapter?: string | null
+          content?: string
+          created_at?: string
+          document_id?: string
+          embedding?: string | null
+          id?: string
+          page_id?: string | null
+          page_number?: number | null
+          section?: string | null
+          token_count?: number | null
+          volume?: string | null
+          warning_flags?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chunks_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chunks_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "document_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      document_pages: {
+        Row: {
+          chapter: string | null
+          content: string | null
+          created_at: string
+          document_id: string
+          id: string
+          page_number: number
+          section: string | null
+          volume: string | null
+        }
+        Insert: {
+          chapter?: string | null
+          content?: string | null
+          created_at?: string
+          document_id: string
+          id?: string
+          page_number: number
+          section?: string | null
+          volume?: string | null
+        }
+        Update: {
+          chapter?: string | null
+          content?: string | null
+          created_at?: string
+          document_id?: string
+          id?: string
+          page_number?: number
+          section?: string | null
+          volume?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "document_pages_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      documents: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_size: number | null
+          file_url: string
+          id: string
+          is_published: boolean
+          published_at: string | null
+          revision: string | null
+          title: string
+          total_pages: number | null
+          updated_at: string
+          uploaded_by: string
+          version: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_size?: number | null
+          file_url: string
+          id?: string
+          is_published?: boolean
+          published_at?: string | null
+          revision?: string | null
+          title: string
+          total_pages?: number | null
+          updated_at?: string
+          uploaded_by: string
+          version: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_size?: number | null
+          file_url?: string
+          id?: string
+          is_published?: boolean
+          published_at?: string | null
+          revision?: string | null
+          title?: string
+          total_pages?: number | null
+          updated_at?: string
+          uploaded_by?: string
+          version?: string
+        }
+        Relationships: []
+      }
+      event_log: {
+        Row: {
+          created_at: string
+          event_data: Json | null
+          event_type: string
+          id: string
+          ip_address: unknown | null
+          session_id: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_data?: Json | null
+          event_type: string
+          id?: string
+          ip_address?: unknown | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_data?: Json | null
+          event_type?: string
+          id?: string
+          ip_address?: unknown | null
+          session_id?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      flashcard_decks: {
+        Row: {
+          created_at: string
+          creation_mode: string | null
+          description: string | null
+          id: string
+          is_organizational: boolean
+          is_public: boolean
+          source_chapter: string | null
+          source_document_id: string | null
+          source_volume: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          creation_mode?: string | null
+          description?: string | null
+          id?: string
+          is_organizational?: boolean
+          is_public?: boolean
+          source_chapter?: string | null
+          source_document_id?: string | null
+          source_volume?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          creation_mode?: string | null
+          description?: string | null
+          id?: string
+          is_organizational?: boolean
+          is_public?: boolean
+          source_chapter?: string | null
+          source_document_id?: string | null
+          source_volume?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flashcard_decks_source_document_id_fkey"
+            columns: ["source_document_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flashcard_reviews: {
+        Row: {
+          card_id: string
+          id: string
+          quality: number
+          response_time_ms: number | null
+          reviewed_at: string
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          id?: string
+          quality: number
+          response_time_ms?: number | null
+          reviewed_at?: string
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          id?: string
+          quality?: number
+          response_time_ms?: number | null
+          reviewed_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flashcard_reviews_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "flashcards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flashcards: {
+        Row: {
+          answer: string
+          card_type: string
+          created_at: string
+          deck_id: string
+          difficulty: number | null
+          ease_factor: number | null
+          id: string
+          interval_days: number | null
+          last_reviewed: string | null
+          question: string
+          source_page_id: string | null
+        }
+        Insert: {
+          answer: string
+          card_type?: string
+          created_at?: string
+          deck_id: string
+          difficulty?: number | null
+          ease_factor?: number | null
+          id?: string
+          interval_days?: number | null
+          last_reviewed?: string | null
+          question: string
+          source_page_id?: string | null
+        }
+        Update: {
+          answer?: string
+          card_type?: string
+          created_at?: string
+          deck_id?: string
+          difficulty?: number | null
+          ease_factor?: number | null
+          id?: string
+          interval_days?: number | null
+          last_reviewed?: string | null
+          question?: string
+          source_page_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flashcards_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "flashcard_decks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flashcards_source_page_id_fkey"
+            columns: ["source_page_id"]
+            isOneToOne: false
+            referencedRelation: "document_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      binary_quantize: {
+        Args: { "": string } | { "": unknown }
+        Returns: unknown
+      }
+      halfvec_avg: {
+        Args: { "": number[] }
+        Returns: unknown
+      }
+      halfvec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      halfvec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      halfvec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      hnsw_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnsw_sparsevec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      hnswhandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_bit_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflat_halfvec_support: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      ivfflathandler: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      l2_norm: {
+        Args: { "": unknown } | { "": unknown }
+        Returns: number
+      }
+      l2_normalize: {
+        Args: { "": string } | { "": unknown } | { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_out: {
+        Args: { "": unknown }
+        Returns: unknown
+      }
+      sparsevec_send: {
+        Args: { "": unknown }
+        Returns: string
+      }
+      sparsevec_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
+      vector_avg: {
+        Args: { "": number[] }
+        Returns: string
+      }
+      vector_dims: {
+        Args: { "": string } | { "": unknown }
+        Returns: number
+      }
+      vector_norm: {
+        Args: { "": string }
+        Returns: number
+      }
+      vector_out: {
+        Args: { "": string }
+        Returns: unknown
+      }
+      vector_send: {
+        Args: { "": string }
+        Returns: string
+      }
+      vector_typmod_in: {
+        Args: { "": unknown[] }
+        Returns: number
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "instructor" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +693,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "instructor", "user"],
+    },
   },
 } as const
