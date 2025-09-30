@@ -168,4 +168,30 @@ All colors MUST be HSL. Professional military-inspired design.
     from { box-shadow: 0 0 5px hsl(var(--navy-glow) / 0.3); }
     to { box-shadow: 0 0 20px hsl(var(--navy-glow) / 0.6); }
   }
+
+  /* PDF Viewer Styles */
+  .react-pdf__Document {
+    @apply w-full;
+  }
+
+  .react-pdf__Page {
+    @apply mx-auto;
+  }
+
+  .react-pdf__Page__textContent {
+    @apply select-text;
+  }
+
+  .react-pdf__Page__annotations {
+    @apply pointer-events-auto;
+  }
+
+  /* PDF text layer for search */
+  .react-pdf__Page__textContent span {
+    @apply opacity-25;
+  }
+
+  .react-pdf__Page__textContent ::selection {
+    @apply bg-[hsl(var(--navy-accent)/0.3)];
+  }
 }

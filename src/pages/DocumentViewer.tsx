@@ -1,10 +1,12 @@
-import { useState, createContext, useContext } from 'react';
+import { useState, createContext, useContext, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { BookOpen, ChevronDown, ChevronRight, ExternalLink, AlertTriangle, Info, AlertCircle, Copy, Menu, X } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, Copy, Menu, X, AlertTriangle, AlertCircle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PDFViewer } from "@/components/PDFViewer";
+import { useLocation, useNavigate } from "react-router-dom";
 
 // Context for managing main nav visibility
 const MainNavContext = createContext<{
@@ -632,7 +634,34 @@ export default function DocumentViewer() {
   const [selectedTOC, setSelectedTOC] = useState<string>("1-1");
   const [tocData, setTocData] = useState<TOCItem[]>(mockTOC);
   const [isMainNavHidden, setIsMainNavHidden] = useState(false);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [targetPage, setTargetPage] = useState<number | undefined>();
+  const [targetParagraph, setTargetParagraph] = useState<string | undefined>();
   const { toast } = useToast();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // PDF URL - For now using a placeholder, will be replaced with actual Navy Manual PDF
+  const pdfUrl = "/navy-diving-manual.pdf"; // This should point to the actual PDF in Supabase Storage
+
+  // Parse hash parameters for deep linking
+  useEffect(() => {
+    const hash = location.hash.slice(1); // Remove #
+    if (hash) {
+      const params = new URLSearchParams(hash);
+      const pageParam = params.get('p');
+      const paraParam = params.get('para');
+      
+      if (pageParam) {
+        const page = parseInt(pageParam);
+        setTargetPage(page);
+      }
+      
+      if (paraParam) {
+        setTargetParagraph(paraParam);
+      }
+    }
+  }, [location.hash]);
 
   // Get current content based on selected TOC item
   const currentContent = documentContent[selectedTOC] || documentContent["1-1"];
@@ -657,12 +686,30 @@ export default function DocumentViewer() {
   };
 
   const handleCopyLink = () => {
-    const url = `${window.location.origin}${window.location.pathname}#${currentContent.anchor_slug}`;
+    // Create deep link with page and paragraph
+    const url = `${window.location.origin}${window.location.pathname}#p=${currentPage}&para=${currentContent.anchor_slug}`;
     navigator.clipboard.writeText(url);
     toast({
       title: "Link copied",
       description: "Deep link to this section has been copied to clipboard",
     });
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleTOCClick = (item: TOCItem) => {
+    setSelectedTOC(item.id);
+    setTargetPage(item.page_index);
+    if (item.para_label) {
+      setTargetParagraph(item.para_label);
+    }
+    // Update URL hash
+    const hash = item.para_label 
+      ? `p=${item.page_index}&para=${item.para_label}`
+      : `p=${item.page_index}`;
+    navigate(`#${hash}`, { replace: true });
   };
 
   const renderTOCItem = (item: TOCItem): React.ReactNode => {
@@ -685,16 +732,7 @@ export default function DocumentViewer() {
           <Button
             variant={isSelected ? "secondary" : "ghost"}
             className="flex-1 justify-between text-left h-auto py-1.5 px-2 min-h-0"
-            onClick={() => {
-              setSelectedTOC(item.id);
-              // Scroll to content if it exists
-              setTimeout(() => {
-                const element = document.getElementById(item.anchor_slug);
-                if (element) {
-                  element.scrollIntoView({ behavior: 'smooth' });
-                }
-              }, 100);
-            }}
+            onClick={() => handleTOCClick(item)}
           >
             <div className="flex justify-between items-center w-full">
               <span className={`text-sm ${item.level === 0 ? 'font-semibold' : ''} ${!hasChildren ? 'ml-7' : ''}`}>
@@ -825,13 +863,14 @@ export default function DocumentViewer() {
           </div>
         </CardHeader>
 
-        {/* Document Content Area */}
-        <CardContent className="flex-1 p-6">
-          <ScrollArea className="h-full">
-            <div id={currentContent.anchor_slug} className="prose prose-sm max-w-none">
-              {renderContent(currentContent.content)}
-            </div>
-          </ScrollArea>
+        {/* PDF Viewer Area */}
+        <CardContent className="flex-1 p-0 overflow-hidden">
+          <PDFViewer 
+            pdfUrl={pdfUrl}
+            targetPage={targetPage}
+            targetParagraph={targetParagraph}
+            onPageChange={handlePageChange}
+          />
         </CardContent>
       </Card>
     </div>
