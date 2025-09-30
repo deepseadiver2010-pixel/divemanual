@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
+import navyDiverBackground from '@/assets/navy-diver-background.jpg';
 
 const authSchema = z.object({
   email: z.string().trim().email({ message: "Please enter a valid email address" }).max(255),
@@ -162,8 +163,19 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div 
+      className="min-h-screen flex items-center justify-center p-4 relative"
+      style={{
+        backgroundImage: `url(${navyDiverBackground})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat'
+      }}
+    >
+      {/* Dark overlay for better contrast */}
+      <div className="absolute inset-0 bg-black/60" />
+      
+      <Card className="w-full max-w-md relative z-10 backdrop-blur-sm bg-card/90 border-border/50">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Navy Diving Manual</CardTitle>
           <CardDescription>
