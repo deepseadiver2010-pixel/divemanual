@@ -9,8 +9,29 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { User, LogOut, Settings, Shield } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 export const TopNav = () => {
+  const { user, signOut } = useAuth();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast({
+        title: "Signed out",
+        description: "You have been signed out successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <header className="h-16 border-b border-border bg-card/50 backdrop-blur-sm">
       <div className="flex items-center justify-between h-full px-6">
@@ -40,8 +61,10 @@ export const TopNav = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" align="end" forceMount>
               <div className="flex flex-col space-y-1 p-2">
-                <p className="text-sm font-medium">John Doe</p>
-                <p className="text-xs text-muted-foreground">Instructor</p>
+                <p className="text-sm font-medium">
+                  {user?.user_metadata?.display_name || user?.email || "Guest"}
+                </p>
+                <p className="text-xs text-muted-foreground">User</p>
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
@@ -57,7 +80,7 @@ export const TopNav = () => {
                 Admin Panel
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem className="text-destructive" onClick={handleSignOut}>
                 <LogOut className="mr-2 h-4 w-4" />
                 Sign Out
               </DropdownMenuItem>

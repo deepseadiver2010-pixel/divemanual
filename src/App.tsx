@@ -7,28 +7,39 @@ import Index from "./pages/Index";
 import DocumentViewer from "./pages/DocumentViewer";
 import Search from "./pages/Search";
 import Flashcards from "./pages/Flashcards";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { Layout } from "./components/Layout";
+import { AuthProvider } from "./hooks/useAuth";
+import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Layout>
+    <AuthProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
           <Routes>
-            <Route path="/" element={<DocumentViewer />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/flashcards" element={<Flashcards />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="*" element={
+              <Layout>
+                <ProtectedRoute>
+                  <Routes>
+                    <Route path="/" element={<DocumentViewer />} />
+                    <Route path="/search" element={<Search />} />
+                    <Route path="/flashcards" element={<Flashcards />} />
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </ProtectedRoute>
+              </Layout>
+            } />
           </Routes>
-        </Layout>
-      </BrowserRouter>
-    </TooltipProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 

@@ -3,12 +3,15 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { ChatWidget } from "./ChatWidget";
 import { TopNav } from "./TopNav";
+import { useAuth } from "@/hooks/useAuth";
 
 interface LayoutProps {
   children: ReactNode;
 }
 
 export const Layout = ({ children }: LayoutProps) => {
+  const { user } = useAuth();
+
   return (
     <div className="min-h-screen bg-background">
       <SidebarProvider>
@@ -21,7 +24,7 @@ export const Layout = ({ children }: LayoutProps) => {
             </main>
           </div>
         </div>
-        <ChatWidget />
+        {user && <ChatWidget />}
       </SidebarProvider>
     </div>
   );
