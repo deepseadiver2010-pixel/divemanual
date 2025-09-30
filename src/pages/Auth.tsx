@@ -172,10 +172,10 @@ const Auth = () => {
         backgroundRepeat: 'no-repeat'
       }}
     >
-      {/* Dark overlay for better contrast */}
-      <div className="absolute inset-0 bg-black/60" />
+      {/* Light overlay for better contrast */}
+      <div className="absolute inset-0 bg-black/40" />
       
-      <Card className="w-full max-w-md relative z-10 backdrop-blur-sm bg-card/90 border-border/50">
+      <Card className="w-full max-w-md relative z-10 backdrop-blur-md bg-card/30 border-border/30 shadow-2xl">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Navy Diving Manual</CardTitle>
           <CardDescription>
