@@ -7,6 +7,7 @@ import { BookOpen, ChevronDown, ChevronRight, Copy, Menu, X, AlertTriangle, Aler
 import { useToast } from "@/hooks/use-toast";
 import { PDFViewer } from "@/components/PDFViewer";
 import { useLocation, useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 // Context for managing main nav visibility
 const MainNavContext = createContext<{
@@ -637,12 +638,50 @@ export default function DocumentViewer() {
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [targetPage, setTargetPage] = useState<number | undefined>();
   const [targetParagraph, setTargetParagraph] = useState<string | undefined>();
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [checkingPdf, setCheckingPdf] = useState<boolean>(true);
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // PDF URL - For now using a placeholder, will be replaced with actual Navy Manual PDF
-  const pdfUrl = "/navy-diving-manual.pdf"; // This should point to the actual PDF in Supabase Storage
+  // Resolve the Navy Diving Manual PDF URL (Storage first, fallback to public file)
+  useEffect(() => {
+    let cancelled = false;
+    const resolvePdf = async () => {
+      try {
+        // Try Storage bucket "manuals"
+        const { data: files, error } = await supabase.storage
+          .from('manuals')
+          .list('', { limit: 100, search: 'navy-diving-manual.pdf' });
+
+        let url: string | null = null;
+        if (!error && files && files.length > 0) {
+          const match = files.find(f => f.name.toLowerCase().endsWith('.pdf')) || files[0];
+          const pub = supabase.storage.from('manuals').getPublicUrl(match.name);
+          url = pub.data.publicUrl;
+        } else {
+          // Fallback to public file if present
+          url = '/navy-diving-manual.pdf';
+        }
+
+        // Validate that the URL returns a PDF
+        const res = await fetch(url, { method: 'GET' });
+        const ct = res.headers.get('content-type') || '';
+        if (!res.ok || !ct.includes('pdf')) {
+          if (!cancelled) setPdfUrl(null);
+        } else {
+          if (!cancelled) setPdfUrl(url);
+        }
+      } catch (e) {
+        if (!cancelled) setPdfUrl(null);
+      } finally {
+        if (!cancelled) setCheckingPdf(false);
+      }
+    };
+
+    resolvePdf();
+    return () => { cancelled = true; };
+  }, []);
 
   // Parse hash parameters for deep linking
   useEffect(() => {
@@ -865,12 +904,25 @@ export default function DocumentViewer() {
 
         {/* PDF Viewer Area */}
         <CardContent className="flex-1 p-0 overflow-hidden">
-          <PDFViewer 
-            pdfUrl={pdfUrl}
-            targetPage={targetPage}
-            targetParagraph={targetParagraph}
-            onPageChange={handlePageChange}
-          />
+          {checkingPdf ? (
+            <div className="h-full flex items-center justify-center text-muted-foreground">
+              Checking for manual PDF...
+            </div>
+          ) : pdfUrl ? (
+            <PDFViewer 
+              pdfUrl={pdfUrl}
+              targetPage={targetPage}
+              targetParagraph={targetParagraph}
+              onPageChange={handlePageChange}
+            />
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+              <div className="text-lg font-medium">Manual PDF not found</div>
+              <div className="text-sm text-muted-foreground max-w-xl">
+                We couldn't locate the Navy Diving Manual. Upload <strong>navy-diving-manual.pdf</strong> to the Storage bucket <strong>manuals</strong> or place it at <code>/public/navy-diving-manual.pdf</code>.
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
