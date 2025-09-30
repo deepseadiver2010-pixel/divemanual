@@ -368,21 +368,222 @@ const mockTOC: TOCItem[] = [
   }
 ];
 
-const mockContent = {
-  volume_label: "Volume 2",
-  chapter_label: "Chapter 9: Decompression Procedures",
-  para_label: "9-3",
-  page_print_number: "9-15",
-  page_range: "9-15 to 9-20",
-  anchor_slug: "para-9-3",
-  warning_flags: ["WARNING", "CAUTION", "NOTE"],
-  content: `
+// Content data structure matching the TOC
+const documentContent: Record<string, any> = {
+  "1": {
+    volume_label: "Volume 1",
+    chapter_label: "Chapter 1: History of Diving",
+    para_label: "1",
+    page_print_number: "1-1",
+    page_range: "1-1 to 1-12",
+    anchor_slug: "ch1",
+    warning_flags: ["NOTE"],
+    content: `
+# 1 HISTORY OF DIVING
+
+This chapter provides an overview of the historical development of diving technology and techniques that led to modern naval diving operations.
+
+## NOTE
+This historical overview is essential for understanding the evolution of diving safety practices and technological advances.
+
+The history of diving spans thousands of years, from ancient breath-hold diving to modern sophisticated diving systems used by the U.S. Navy today.
+    `
+  },
+  "1-1": {
+    volume_label: "Volume 1",
+    chapter_label: "Chapter 1: History of Diving",
+    para_label: "1-1",
+    page_print_number: "1-1",
+    page_range: "1-1 to 1-1",
+    anchor_slug: "para-1-1",
+    warning_flags: [],
+    content: `
+# 1-1 INTRODUCTION
+
+This section introduces the purpose, scope, and role of the U.S. Navy in diving operations.
+
+## 1-1.1 Purpose
+
+The purpose of this manual is to provide comprehensive guidance for Navy diving operations, ensuring safety and operational effectiveness.
+
+## 1-1.2 Scope
+
+This manual covers all aspects of Navy diving operations, from basic principles to advanced techniques.
+
+## 1-1.3 Role of the U.S. Navy
+
+The U.S. Navy has been at the forefront of diving technology development and operational implementation since the early 1900s.
+    `
+  },
+  "1-1-1": {
+    volume_label: "Volume 1",
+    chapter_label: "Chapter 1: History of Diving",
+    para_label: "1-1.1",
+    page_print_number: "1-1",
+    page_range: "1-1",
+    anchor_slug: "para-1-1-1",
+    warning_flags: [],
+    content: `
+# 1-1.1 Purpose
+
+The purpose of this manual is to provide comprehensive guidance for all Navy diving operations. This includes:
+
+- Standardized procedures for diving operations
+- Safety protocols and emergency procedures
+- Equipment operation and maintenance
+- Training requirements and certification standards
+
+This manual serves as the authoritative source for Navy diving practices and must be followed by all diving personnel.
+    `
+  },
+  "1-1-2": {
+    volume_label: "Volume 1",
+    chapter_label: "Chapter 1: History of Diving",
+    para_label: "1-1.2",
+    page_print_number: "1-1",
+    page_range: "1-1",
+    anchor_slug: "para-1-1-2",
+    warning_flags: [],
+    content: `
+# 1-1.2 Scope
+
+This manual encompasses all types of Navy diving operations including:
+
+- Surface-supplied air diving
+- SCUBA diving operations
+- Mixed gas diving
+- Saturation diving systems
+- Diving bell operations
+- Emergency diving procedures
+
+The manual applies to all Navy diving personnel, regardless of rating or specialization.
+    `
+  },
+  "1-1-3": {
+    volume_label: "Volume 1",
+    chapter_label: "Chapter 1: History of Diving",
+    para_label: "1-1.3",
+    page_print_number: "1-1",
+    page_range: "1-1",
+    anchor_slug: "para-1-1-3",
+    warning_flags: [],
+    content: `
+# 1-1.3 Role of the U.S. Navy
+
+The U.S. Navy has played a pivotal role in the development of diving technology and procedures:
+
+- **Pioneering Research**: Navy laboratories have developed many diving technologies
+- **Safety Standards**: Established comprehensive safety protocols
+- **Training Programs**: Created systematic diver training and certification
+- **Operational Excellence**: Demonstrated diving capabilities in military and civilian applications
+
+The Navy continues to lead in diving technology advancement and operational safety.
+    `
+  },
+  "1-2": {
+    volume_label: "Volume 1",
+    chapter_label: "Chapter 1: History of Diving",
+    para_label: "1-2",
+    page_print_number: "1-1",
+    page_range: "1-1 to 1-8",
+    anchor_slug: "para-1-2",
+    warning_flags: ["WARNING", "CAUTION"],
+    content: `
+# 1-2 SURFACE-SUPPLIED AIR DIVING
+
+Surface-supplied air diving represents the foundation of modern Navy diving operations.
+
+## WARNING
+Surface-supplied diving operations require constant communication and monitoring between diver and surface personnel. Loss of air supply can be fatal.
+
+## CAUTION
+All surface-supplied diving equipment must be inspected and tested before each dive operation.
+
+This section covers the historical development and current practices of surface-supplied air diving systems.
+
+## 1-2.1 Breathing Tubes
+
+Early diving attempts used simple breathing tubes, which were limited by:
+- Depth restrictions due to breathing resistance
+- Water intrusion problems
+- Limited mobility
+
+## 1-2.2 Breathing Bags
+
+Breathing bags represented an improvement over simple tubes:
+- Provided air reservoir
+- Allowed limited underwater mobility
+- Still had depth and duration limitations
+
+## 1-2.3 Diving Bells
+
+Diving bells were a significant advancement:
+- Enclosed air space for breathing
+- Protection from water pressure
+- Platform for extended underwater work
+    `
+  },
+  "1-2-4": {
+    volume_label: "Volume 1",
+    chapter_label: "Chapter 1: History of Diving",
+    para_label: "1-2.4",
+    page_print_number: "1-3",
+    page_range: "1-3 to 1-5",
+    anchor_slug: "para-1-2-4",
+    warning_flags: [],
+    content: `
+# 1-2.4 Diving Dress Designs
+
+The evolution of diving dress designs marked a crucial period in diving history.
+
+## 1-2.4.1 Lethbridge's Diving Dress
+
+John Lethbridge's diving apparatus (1715) featured:
+- Leather-covered wooden barrel
+- Glass viewing ports
+- Air supplied from surface
+- Limited but effective for salvage work
+
+## 1-2.4.2 Deane's Patented Diving Dress
+
+The Deane brothers' helmet design included:
+- Metal helmet with air supply
+- Improved visibility
+- Better air circulation
+- Foundation for modern helmet design
+
+## 1-2.4.3 Siebe's Improved Diving Dress
+
+Augustus Siebe's improvements:
+- Sealed diving suit
+- Reliable air valve system
+- Enhanced safety features
+- Became standard for decades
+
+## 1-2.4.4 Salvage of the Royal George
+
+The Royal George salvage operation demonstrated:
+- Practical application of diving technology
+- Large-scale underwater operations
+- Economic viability of diving services
+- Public recognition of diving capabilities
+    `
+  },
+  "9-3": {
+    volume_label: "Volume 2",
+    chapter_label: "Chapter 9: Decompression Procedures",
+    para_label: "9-3",
+    page_print_number: "9-15",
+    page_range: "9-15 to 9-20",
+    anchor_slug: "para-9-3",
+    warning_flags: ["WARNING", "CAUTION", "NOTE"],
+    content: `
 # 9-3 Standard Air Decompression Tables
 
 ## WARNING
 Failure to follow decompression procedures can result in decompression sickness, which may cause permanent injury or death. All divers must strictly adhere to established decompression protocols.
 
-## 9-3-1 Table Selection
+## 9-3.1 Table Selection
 
 The standard air decompression tables provide the basis for all air diving operations. These tables specify the required decompression stops based on:
 
@@ -393,7 +594,7 @@ The standard air decompression tables provide the basis for all air diving opera
 ## CAUTION
 Bottom time begins when the diver leaves the surface and ends when the diver begins ascent from maximum depth. This includes descent time.
 
-## 9-3-2 Decompression Stop Requirements
+## 9-3.2 Decompression Stop Requirements
 
 Decompression stops are mandatory when:
 1. Diving operations exceed no-decompression limits
@@ -410,7 +611,7 @@ Standard decompression stops are conducted at:
 ## NOTE
 All decompression stops are measured from the diver's chest level and must be maintained within ±2 feet of specified depth.
 
-## 9-3-3 Emergency Decompression
+## 9-3.3 Emergency Decompression
 
 In emergency situations where standard decompression cannot be completed:
 
@@ -423,14 +624,18 @@ In emergency situations where standard decompression cannot be completed:
    - Hyperbaric chamber availability
    - Transportation requirements
    - Medical evaluation protocols
-  `
+    `
+  }
 };
 
 export default function DocumentViewer() {
-  const [selectedTOC, setSelectedTOC] = useState<string>("9-3");
+  const [selectedTOC, setSelectedTOC] = useState<string>("1-1");
   const [tocData, setTocData] = useState<TOCItem[]>(mockTOC);
   const [isMainNavHidden, setIsMainNavHidden] = useState(false);
   const { toast } = useToast();
+
+  // Get current content based on selected TOC item
+  const currentContent = documentContent[selectedTOC] || documentContent["1-1"];
 
   const toggleMainNav = () => {
     setIsMainNavHidden(!isMainNavHidden);
@@ -452,7 +657,7 @@ export default function DocumentViewer() {
   };
 
   const handleCopyLink = () => {
-    const url = `${window.location.origin}${window.location.pathname}#${mockContent.anchor_slug}`;
+    const url = `${window.location.origin}${window.location.pathname}#${currentContent.anchor_slug}`;
     navigator.clipboard.writeText(url);
     toast({
       title: "Link copied",
@@ -480,7 +685,16 @@ export default function DocumentViewer() {
           <Button
             variant={isSelected ? "secondary" : "ghost"}
             className="flex-1 justify-between text-left h-auto py-1.5 px-2 min-h-0"
-            onClick={() => setSelectedTOC(item.id)}
+            onClick={() => {
+              setSelectedTOC(item.id);
+              // Scroll to content if it exists
+              setTimeout(() => {
+                const element = document.getElementById(item.anchor_slug);
+                if (element) {
+                  element.scrollIntoView({ behavior: 'smooth' });
+                }
+              }, 100);
+            }}
           >
             <div className="flex justify-between items-center w-full">
               <span className={`text-sm ${item.level === 0 ? 'font-semibold' : ''} ${!hasChildren ? 'ml-7' : ''}`}>
@@ -577,19 +791,19 @@ export default function DocumentViewer() {
           <div className="flex items-center justify-between">
             <div className="flex-1">
               <CardTitle className="text-[hsl(var(--navy-primary))] text-lg">
-                {mockContent.chapter_label}
+                {currentContent.chapter_label}
               </CardTitle>
               <div className="flex items-center gap-4 mt-2 flex-wrap">
                 <Badge variant="outline" className="status-note">
-                  {mockContent.volume_label}
+                  {currentContent.volume_label}
                 </Badge>
                 <Badge variant="outline">
-                  {mockContent.para_label}
+                  {currentContent.para_label}
                 </Badge>
                 <Badge variant="outline">
-                  Pages {mockContent.page_range}
+                  Pages {currentContent.page_range}
                 </Badge>
-                {mockContent.warning_flags?.map((flag) => (
+                {currentContent.warning_flags?.map((flag: string) => (
                   <Badge 
                     key={flag} 
                     variant="outline" 
@@ -614,8 +828,8 @@ export default function DocumentViewer() {
         {/* Document Content Area */}
         <CardContent className="flex-1 p-6">
           <ScrollArea className="h-full">
-            <div id={mockContent.anchor_slug} className="prose prose-sm max-w-none">
-              {renderContent(mockContent.content)}
+            <div id={currentContent.anchor_slug} className="prose prose-sm max-w-none">
+              {renderContent(currentContent.content)}
             </div>
           </ScrollArea>
         </CardContent>
