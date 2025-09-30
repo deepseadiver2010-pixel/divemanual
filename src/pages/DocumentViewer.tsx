@@ -1,22 +1,15 @@
-import { useState, createContext, useContext, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerClose } from "@/components/ui/drawer";
 import { BookOpen, ChevronDown, ChevronRight, Copy, Menu, X, AlertTriangle, AlertCircle, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { PDFViewer } from "@/components/PDFViewer";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-
-// Context for managing main nav visibility
-const MainNavContext = createContext<{
-  isMainNavHidden: boolean;
-  toggleMainNav: () => void;
-}>({
-  isMainNavHidden: false,
-  toggleMainNav: () => {}
-});
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface TOCItem {
   id: string;
@@ -632,17 +625,25 @@ In emergency situations where standard decompression cannot be completed:
 };
 
 export default function DocumentViewer() {
+  const isMobile = useIsMobile();
   const [selectedTOC, setSelectedTOC] = useState<string>("1-1");
   const [tocData, setTocData] = useState<TOCItem[]>(mockTOC);
-  const [isMainNavHidden, setIsMainNavHidden] = useState(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [targetPage, setTargetPage] = useState<number | undefined>();
   const [targetParagraph, setTargetParagraph] = useState<string | undefined>();
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [checkingPdf, setCheckingPdf] = useState<boolean>(true);
+  
+  // TOC visibility state with localStorage persistence
+  const [isTOCOpen, setIsTOCOpen] = useState<boolean>(() => {
+    const saved = localStorage.getItem('toc-open');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  
   const { toast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+  const tocRef = useRef<HTMLDivElement>(null);
 
   // Resolve the Navy Diving Manual PDF URL (Storage first, fallback to public file)
   useEffect(() => {
@@ -705,8 +706,24 @@ export default function DocumentViewer() {
   // Get current content based on selected TOC item
   const currentContent = documentContent[selectedTOC] || documentContent["1-1"];
 
-  const toggleMainNav = () => {
-    setIsMainNavHidden(!isMainNavHidden);
+  // Persist TOC state to localStorage
+  useEffect(() => {
+    localStorage.setItem('toc-open', JSON.stringify(isTOCOpen));
+  }, [isTOCOpen]);
+
+  // Close drawer with Esc key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isTOCOpen && isMobile) {
+        setIsTOCOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isTOCOpen, isMobile]);
+
+  const toggleTOC = () => {
+    setIsTOCOpen(!isTOCOpen);
   };
 
   const toggleTOCExpansion = (itemId: string) => {
@@ -749,6 +766,11 @@ export default function DocumentViewer() {
       ? `p=${item.page_index}&para=${item.para_label}`
       : `p=${item.page_index}`;
     navigate(`#${hash}`, { replace: true });
+    
+    // Close drawer on mobile after selection
+    if (isMobile) {
+      setIsTOCOpen(false);
+    }
   };
 
   const renderTOCItem = (item: TOCItem): React.ReactNode => {
@@ -844,87 +866,148 @@ export default function DocumentViewer() {
     });
   };
 
-  return (
-    <div className="flex gap-6 h-[calc(100vh-8rem)]">
-      {/* Table of Contents - Automatically expands when main nav is hidden */}
-      <Card className="w-80 lg:w-96 flex flex-col transition-all duration-300">
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-2 text-[hsl(var(--navy-primary))]">
-            <BookOpen className="w-5 h-5" />
-            Navy Diving Manual - Table of Contents
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex-1 p-0">
-          <ScrollArea className="h-full px-4 pb-4">
-            {tocData.map(renderTOCItem)}
-          </ScrollArea>
-        </CardContent>
-      </Card>
+  // TOC Content Component (reusable for both sidebar and drawer)
+  const TOCContent = () => (
+    <div className="flex flex-col h-full">
+      <div className="pb-4 px-4 pt-4 border-b">
+        <div className="flex items-center gap-2 text-[hsl(var(--navy-primary))]">
+          <BookOpen className="w-5 h-5" />
+          <h2 className="font-semibold">Table of Contents</h2>
+        </div>
+      </div>
+      <ScrollArea className="flex-1 px-4 pb-4 pt-4">
+        {tocData.map(renderTOCItem)}
+      </ScrollArea>
+    </div>
+  );
 
-      {/* Document Content - Expanded to fill remaining space */}
+  return (
+    <div className="flex flex-col h-[calc(100vh-8rem)]">
+      {/* Document Content - Full width */}
       <Card className="flex-1 flex flex-col">
-        {/* Top Bar with Current Location and Copy Link */}
+        {/* Top Bar with TOC Toggle, Current Location and Copy Link */}
         <CardHeader className="border-b">
-          <div className="flex items-center justify-between">
-            <div className="flex-1">
-              <CardTitle className="text-[hsl(var(--navy-primary))] text-lg">
+          <div className="flex items-center gap-3">
+            {/* TOC Toggle Button - Always visible */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleTOC}
+              aria-controls="toc-panel"
+              aria-expanded={isTOCOpen}
+              aria-label="Toggle Table of Contents"
+              className="shrink-0"
+            >
+              {isTOCOpen && !isMobile ? <X className="w-4 h-4 mr-2" /> : <Menu className="w-4 h-4 mr-2" />}
+              TOC
+            </Button>
+
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-[hsl(var(--navy-primary))] text-base lg:text-lg truncate">
                 {currentContent.chapter_label}
               </CardTitle>
-              <div className="flex items-center gap-4 mt-2 flex-wrap">
-                <Badge variant="outline" className="status-note">
+              <div className="flex items-center gap-2 lg:gap-4 mt-2 flex-wrap">
+                <Badge variant="outline" className="status-note text-xs">
                   {currentContent.volume_label}
                 </Badge>
-                <Badge variant="outline">
+                <Badge variant="outline" className="text-xs">
                   {currentContent.para_label}
                 </Badge>
-                <Badge variant="outline">
+                <Badge variant="outline" className="hidden sm:inline-flex text-xs">
                   Pages {currentContent.page_range}
                 </Badge>
                 {currentContent.warning_flags?.map((flag: string) => (
                   <Badge 
                     key={flag} 
                     variant="outline" 
-                    className={
+                    className={`text-xs ${
                       flag === 'WARNING' ? 'border-[hsl(var(--warning-amber))] text-[hsl(var(--warning-amber))]' :
                       flag === 'CAUTION' ? 'border-[hsl(var(--caution-orange))] text-[hsl(var(--caution-orange))]' :
                       'border-[hsl(var(--note-blue))] text-[hsl(var(--note-blue))]'
-                    }
+                    }`}
                   >
                     {flag}
                   </Badge>
                 ))}
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={handleCopyLink}>
-              <Copy className="w-4 h-4 mr-2" />
-              Copy Link
+
+            <Button variant="outline" size="sm" onClick={handleCopyLink} className="shrink-0">
+              <Copy className="w-4 h-4 lg:mr-2" />
+              <span className="hidden lg:inline">Copy Link</span>
             </Button>
           </div>
         </CardHeader>
 
-        {/* PDF Viewer Area */}
-        <CardContent className="flex-1 p-0 overflow-hidden">
-          {checkingPdf ? (
-            <div className="h-full flex items-center justify-center text-muted-foreground">
-              Checking for manual PDF...
-            </div>
-          ) : pdfUrl ? (
-            <PDFViewer 
-              pdfUrl={pdfUrl}
-              targetPage={targetPage}
-              targetParagraph={targetParagraph}
-              onPageChange={handlePageChange}
-            />
-          ) : (
-            <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
-              <div className="text-lg font-medium">Manual PDF not found</div>
-              <div className="text-sm text-muted-foreground max-w-xl">
-                We couldn't locate the Navy Diving Manual. Upload <strong>navy-diving-manual.pdf</strong> to the Storage bucket <strong>manuals</strong> or place it at <code>/public/navy-diving-manual.pdf</code>.
-              </div>
+        {/* Content Area with TOC Sidebar or Drawer */}
+        <CardContent className="flex-1 p-0 overflow-hidden flex">
+          {/* Desktop: Collapsible Sidebar */}
+          {!isMobile && isTOCOpen && (
+            <div 
+              id="toc-panel"
+              ref={tocRef}
+              className="w-80 lg:w-96 border-r bg-card flex flex-col animate-slide-in-left"
+              role="navigation"
+              aria-label="Table of Contents"
+            >
+              <TOCContent />
             </div>
           )}
+
+          {/* PDF Viewer Area - Expands when TOC is closed */}
+          <div className="flex-1 overflow-hidden">
+            {checkingPdf ? (
+              <div className="h-full flex items-center justify-center text-muted-foreground">
+                Checking for manual PDF...
+              </div>
+            ) : pdfUrl ? (
+              <PDFViewer 
+                pdfUrl={pdfUrl}
+                targetPage={targetPage}
+                targetParagraph={targetParagraph}
+                onPageChange={handlePageChange}
+              />
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                <div className="text-lg font-medium">Manual PDF not found</div>
+                <div className="text-sm text-muted-foreground max-w-xl">
+                  We couldn't locate the Navy Diving Manual. Upload <strong>navy-diving-manual.pdf</strong> to the Storage bucket <strong>manuals</strong> or place it at <code>/public/navy-diving-manual.pdf</code>.
+                </div>
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
+
+      {/* Mobile: Drawer Overlay */}
+      {isMobile && (
+        <Drawer open={isTOCOpen} onOpenChange={setIsTOCOpen}>
+          <DrawerContent 
+            id="toc-panel"
+            className="h-[85vh]"
+            aria-label="Table of Contents"
+          >
+            <DrawerHeader className="border-b">
+              <div className="flex items-center justify-between">
+                <DrawerTitle className="flex items-center gap-2 text-[hsl(var(--navy-primary))]">
+                  <BookOpen className="w-5 h-5" />
+                  Table of Contents
+                </DrawerTitle>
+                <DrawerClose asChild>
+                  <Button variant="ghost" size="sm" aria-label="Close Table of Contents">
+                    <X className="w-4 h-4" />
+                  </Button>
+                </DrawerClose>
+              </div>
+            </DrawerHeader>
+            <div className="flex-1 overflow-hidden">
+              <ScrollArea className="h-full px-4 pb-4 pt-4">
+                {tocData.map(renderTOCItem)}
+              </ScrollArea>
+            </div>
+          </DrawerContent>
+        </Drawer>
+      )}
     </div>
   );
 }
