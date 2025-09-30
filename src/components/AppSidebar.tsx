@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpen, Search, Brain, CreditCard as Cards, Settings, Shield, BarChart3, Upload } from "lucide-react";
+import { BookOpen, Search, Brain, CreditCard as Cards, Settings, Shield, BarChart3, Upload, Menu } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
 import {
@@ -14,6 +14,11 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+
+interface AppSidebarProps {
+  isDocumentViewer?: boolean;
+}
 
 const mainItems = [
   { title: "Document Viewer", url: "/", icon: BookOpen },
@@ -28,17 +33,35 @@ const adminItems = [
   { title: "Settings", url: "/admin/settings", icon: Settings },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ isDocumentViewer = false }: AppSidebarProps) {
   const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
   const collapsed = state === "collapsed";
+  const [isMainNavHidden, setIsMainNavHidden] = useState(false);
 
   const isActive = (path: string) => currentPath === path;
   const getNavCls = ({ isActive }: { isActive: boolean }) =>
     isActive 
       ? "bg-[hsl(var(--navy-accent)/0.1)] text-[hsl(var(--navy-accent))] border-r-2 border-[hsl(var(--navy-accent))] font-medium" 
       : "hover:bg-muted/50 hover:text-[hsl(var(--navy-light))]";
+
+  // Render toggle button when sidebar is hidden on document viewer
+  if (isDocumentViewer && isMainNavHidden) {
+    return (
+      <div className="fixed top-20 left-4 z-50">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsMainNavHidden(false)}
+          className="bg-card border border-border shadow-lg hover:bg-muted"
+        >
+          <Menu className="w-4 h-4 mr-2" />
+          Show Nav
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <Sidebar
@@ -108,6 +131,21 @@ export function AppSidebar() {
       <div className="absolute top-4 -right-3 z-50">
         <SidebarTrigger className="bg-card border border-border shadow-md hover:bg-muted" />
       </div>
+
+      {/* Document Viewer Toggle - Hide Main Navigation */}
+      {isDocumentViewer && (
+        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsMainNavHidden(true)}
+            className="bg-card border border-border shadow-md hover:bg-muted text-xs"
+          >
+            <Menu className="w-3 h-3 mr-1" />
+            Hide for TOC
+          </Button>
+        </div>
+      )}
     </Sidebar>
   );
 }

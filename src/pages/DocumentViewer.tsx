@@ -1,10 +1,19 @@
-import { useState } from 'react';
+import { useState, createContext, useContext } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { BookOpen, ChevronDown, ChevronRight, ExternalLink, AlertTriangle, Info, AlertCircle, Copy } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronRight, ExternalLink, AlertTriangle, Info, AlertCircle, Copy, Menu, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+// Context for managing main nav visibility
+const MainNavContext = createContext<{
+  isMainNavHidden: boolean;
+  toggleMainNav: () => void;
+}>({
+  isMainNavHidden: false,
+  toggleMainNav: () => {}
+});
 
 interface TOCItem {
   id: string;
@@ -198,7 +207,12 @@ In emergency situations where standard decompression cannot be completed:
 export default function DocumentViewer() {
   const [selectedTOC, setSelectedTOC] = useState<string>("9-3");
   const [tocData, setTocData] = useState<TOCItem[]>(mockTOC);
+  const [isMainNavHidden, setIsMainNavHidden] = useState(false);
   const { toast } = useToast();
+
+  const toggleMainNav = () => {
+    setIsMainNavHidden(!isMainNavHidden);
+  };
 
   const toggleTOCExpansion = (itemId: string) => {
     const updateTOC = (items: TOCItem[]): TOCItem[] => {
@@ -319,8 +333,8 @@ export default function DocumentViewer() {
 
   return (
     <div className="flex gap-6 h-[calc(100vh-8rem)]">
-      {/* Table of Contents - Left Sidebar */}
-      <Card className="w-80 flex flex-col">
+      {/* Table of Contents - Automatically expands when main nav is hidden */}
+      <Card className="w-80 lg:w-96 flex flex-col transition-all duration-300">
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-2 text-[hsl(var(--navy-primary))]">
             <BookOpen className="w-5 h-5" />

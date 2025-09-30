@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { ChatWidget } from "./ChatWidget";
@@ -11,14 +12,16 @@ interface LayoutProps {
 
 export const Layout = ({ children }: LayoutProps) => {
   const { user } = useAuth();
+  const location = useLocation();
+  const isDocumentViewer = location.pathname === '/';
 
   return (
     <div className="min-h-screen bg-background">
       <SidebarProvider>
         <div className="flex min-h-screen w-full">
-          <AppSidebar />
+          <AppSidebar isDocumentViewer={isDocumentViewer} />
           <div className="flex-1 flex flex-col">
-            <TopNav />
+            <TopNav isDocumentViewer={isDocumentViewer} />
             <main className="flex-1 p-6">
               {children}
             </main>

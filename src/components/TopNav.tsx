@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -8,11 +9,15 @@ import {
   DropdownMenuSeparator, 
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
-import { User, LogOut, Settings, Shield } from "lucide-react";
+import { User, LogOut, Settings, Shield, Menu } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
-export const TopNav = () => {
+interface TopNavProps {
+  isDocumentViewer?: boolean;
+}
+
+export const TopNav = ({ isDocumentViewer = false }: TopNavProps) => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
 
