@@ -4,13 +4,8 @@ import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Search } from "lucide-react
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-// ---- PDF.js worker: use a bundled/relative worker to avoid CORS/version drift
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdf.worker.min.mjs",
-  // resolves to node_modules/pdfjs-dist/build/pdf.worker.min.mjs at build time
-  // ensure next.config.js -> transpilePackages: ["react-pdf","pdfjs-dist"] if needed
-  import.meta.url
-).toString();
+// ---- PDF.js worker from CDN to avoid local worker fetch issues
+pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 interface PDFViewerProps {
   pdfUrl: string;
