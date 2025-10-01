@@ -148,8 +148,9 @@ export const PDFViewer = ({ pdfUrl, onPageChange, targetPage, targetParagraph }:
       <ScrollArea className="flex-1" onScrollCapture={handleScroll}>
         <div 
           ref={containerRef}
-          className="flex flex-col items-center py-4 bg-muted/30"
+          className="flex flex-col items-center py-4 px-4 lg:px-8 bg-muted/30 w-full"
         >
+          <div className="w-full max-w-5xl mx-auto">
           <Document
             file={pdfUrl}
             onLoadSuccess={onDocumentLoadSuccess}
@@ -180,6 +181,7 @@ export const PDFViewer = ({ pdfUrl, onPageChange, targetPage, targetParagraph }:
               </div>
             ))}
           </Document>
+          </div>
         </div>
       </ScrollArea>
     </div>
