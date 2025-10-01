@@ -1,12 +1,16 @@
-import { useState, useEffect, useRef } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { useState, useEffect, useRef } from "react";
+import { Document, Page, pdfjs } from "react-pdf";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-// Configure PDF.js worker
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// ---- PDF.js worker: use a bundled/relative worker to avoid CORS/version drift
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdf.worker.min.mjs",
+  // resolves to node_modules/pdfjs-dist/build/pdf.worker.min.mjs at build time
+  // ensure next.config.js -> transpilePackages: ["react-pdf","pdfjs-dist"] if needed
+  import.meta.url
+).toString();
 
 interface PDFViewerProps {
   pdfUrl: string;
@@ -15,111 +19,125 @@ interface PDFViewerProps {
   targetParagraph?: string;
 }
 
-export const PDFViewer = ({ pdfUrl, onPageChange, targetPage, targetParagraph }: PDFViewerProps) => {
-  const [numPages, setNumPages] = useState<number>(0);
-  const [currentPage, setCurrentPage] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1.0);
-  const [searchText, setSearchText] = useState<string>('');
-  const containerRef = useRef<HTMLDivElement>(null);
-  const pageRefs = useRef<{ [key: number]: HTMLDivElement | null }>({});
+export const PDFViewer = ({
+  pdfUrl,
+  onPageChange,
+  targetPage,
+  targetParagraph,
+}: PDFViewerProps) => {
+  const [numPages, setNumPages] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [scale, setScale] = useState(1.0);
+  const [searchText, setSearchText] = useState("");
 
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const pageRefs = useRef<Record<number, HTMLDivElement | null>>({});
+
+  // Observe which page is in view (relative to the scroll container)
   useEffect(() => {
-    if (targetPage && targetPage > 0 && targetPage <= numPages) {
-      scrollToPage(targetPage);
+    const root = scrollRef.current;
+    if (!root) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // pick the entry with the largest intersection ratio > 0
+        let best: IntersectionObserverEntry | null = null;
+        for (const e of entries) {
+          if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
+        }
+        if (best?.isIntersecting) {
+          const numAttr = (best.target as HTMLElement).dataset["pnum"];
+          if (numAttr) {
+            const visible = parseInt(numAttr, 10);
+            if (visible !== currentPage) {
+              setCurrentPage(visible);
+              onPageChange?.(visible);
+            }
+          }
+        }
+      },
+      { root, threshold: [0.1, 0.25, 0.5, 0.75] }
+    );
+
+    Object.entries(pageRefs.current).forEach(([k, el]) => {
+      if (el) observer.observe(el);
+    });
+
+    return () => observer.disconnect();
+  }, [numPages, onPageChange, currentPage]);
+
+  // Scroll to target page when available
+  useEffect(() => {
+    if (!targetPage || targetPage < 1 || targetPage > numPages) return;
+    const el = pageRefs.current[targetPage];
+    if (el && scrollRef.current) {
+      const container = scrollRef.current;
+      const top = el.offsetTop; // relative to scroll container
+      container.scrollTo({ top: top - 16, behavior: "smooth" });
     }
   }, [targetPage, numPages]);
 
+  // (Temporary) rough paragraph find using window.find
   useEffect(() => {
-    if (targetParagraph && targetPage) {
-      // Wait for page to render, then search for paragraph
-      setTimeout(() => searchForParagraph(targetParagraph, targetPage), 500);
-    }
+    if (!targetParagraph || !targetPage) return;
+    // delay to ensure page text layer is rendered
+    const id = setTimeout(() => {
+      const win = window as any;
+      const terms = targetParagraph.replace(/[-.]/g, " ");
+      if (win.find) win.find(terms, false, false, true, false, true, false);
+    }, 600);
+    return () => clearTimeout(id);
   }, [targetParagraph, targetPage]);
 
-  const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
+  const onLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
   };
 
   const scrollToPage = (pageNum: number) => {
-    const pageElement = pageRefs.current[pageNum];
-    if (pageElement) {
-      pageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      setCurrentPage(pageNum);
-      onPageChange?.(pageNum);
+    const el = pageRefs.current[pageNum];
+    if (el && scrollRef.current) {
+      const container = scrollRef.current;
+      container.scrollTo({ top: el.offsetTop - 16, behavior: "smooth" });
     }
   };
 
-  const searchForParagraph = async (paraLabel: string, startPage: number) => {
-    // This is a simplified implementation
-    // In production, you'd use PDF.js text layer API to find exact matches
-    const searchTerms = paraLabel.replace(/[-.]/g, ' ');
-    
-    // Trigger browser's native find (if available)
-    const win = window as any;
-    if (win.find) {
-      win.find(searchTerms, false, false, true, false, true, false);
-    }
-  };
-
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const container = e.currentTarget;
-    const scrollTop = container.scrollTop;
-    
-    // Determine which page is currently visible
-    let visiblePage = 1;
-    Object.keys(pageRefs.current).forEach((pageNum) => {
-      const pageElement = pageRefs.current[parseInt(pageNum)];
-      if (pageElement) {
-        const rect = pageElement.getBoundingClientRect();
-        if (rect.top <= 100 && rect.bottom >= 100) {
-          visiblePage = parseInt(pageNum);
-        }
-      }
-    });
-    
-    if (visiblePage !== currentPage) {
-      setCurrentPage(visiblePage);
-      onPageChange?.(visiblePage);
-    }
-  };
-
-  const handleZoomIn = () => setScale((prev) => Math.min(prev + 0.2, 3.0));
-  const handleZoomOut = () => setScale((prev) => Math.max(prev - 0.2, 0.5));
+  const handleZoomIn = () => setScale((s) => Math.min(s + 0.2, 3));
+  const handleZoomOut = () => setScale((s) => Math.max(s - 0.2, 0.5));
 
   return (
-    <div className="flex flex-col h-full">
-      {/* PDF Toolbar */}
-      <div className="flex items-center justify-between gap-4 p-4 border-b bg-background">
+    <div className="flex h-full flex-col">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-4 border-b bg-background p-4">
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
             size="icon"
             onClick={() => scrollToPage(Math.max(1, currentPage - 1))}
             disabled={currentPage <= 1}
+            aria-label="Previous page"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="text-sm whitespace-nowrap">
-            Page {currentPage} of {numPages}
+          <span className="whitespace-nowrap text-sm">
+            Page {currentPage} of {numPages || "…"}
           </span>
           <Button
             variant="outline"
             size="icon"
             onClick={() => scrollToPage(Math.min(numPages, currentPage + 1))}
-            disabled={currentPage >= numPages}
+            disabled={!numPages || currentPage >= numPages}
+            aria-label="Next page"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" onClick={handleZoomOut}>
+          <Button variant="outline" size="icon" onClick={handleZoomOut} aria-label="Zoom out">
             <ZoomOut className="h-4 w-4" />
           </Button>
-          <span className="text-sm whitespace-nowrap">
-            {Math.round(scale * 100)}%
-          </span>
-          <Button variant="outline" size="icon" onClick={handleZoomIn}>
+          <span className="whitespace-nowrap text-sm">{Math.round(scale * 100)}%</span>
+          <Button variant="outline" size="icon" onClick={handleZoomIn} aria-label="Zoom in">
             <ZoomIn className="h-4 w-4" />
           </Button>
         </div>
@@ -128,15 +146,13 @@ export const PDFViewer = ({ pdfUrl, onPageChange, targetPage, targetParagraph }:
           <Search className="h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Find in document..."
+            placeholder="Find in document…"
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && searchText) {
+              if (e.key === "Enter" && searchText) {
                 const win = window as any;
-                if (win.find) {
-                  win.find(searchText, false, false, true, false, true, false);
-                }
+                if (win.find) win.find(searchText, false, false, true, false, true, false);
               }
             }}
             className="w-64"
@@ -144,46 +160,51 @@ export const PDFViewer = ({ pdfUrl, onPageChange, targetPage, targetParagraph }:
         </div>
       </div>
 
-      {/* PDF Content - Continuous Scroll */}
-      <ScrollArea className="flex-1" onScrollCapture={handleScroll}>
-        <div 
-          ref={containerRef}
-          className="flex flex-col items-center py-4 px-4 lg:px-8 bg-muted/30 w-full"
-        >
-          <div className="w-full max-w-5xl mx-auto">
+      {/* Single, explicit scroll container to keep centering correct */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-auto bg-muted/30 py-6"
+        // optional: role and aria for better a11y
+        role="region"
+        aria-label="PDF document viewer"
+      >
+        <div className="mx-auto w-full max-w-5xl px-4 lg:px-8">
           <Document
             file={pdfUrl}
-            onLoadSuccess={onDocumentLoadSuccess}
+            onLoadSuccess={onLoadSuccess}
             loading={
-              <div className="flex items-center justify-center h-96">
-                <div className="text-muted-foreground">Loading PDF...</div>
+              <div className="flex h-96 items-center justify-center">
+                <div className="text-muted-foreground">Loading PDF…</div>
               </div>
             }
             error={
-              <div className="flex items-center justify-center h-96">
+              <div className="flex h-96 items-center justify-center">
                 <div className="text-destructive">Failed to load PDF</div>
               </div>
             }
           >
-            {Array.from(new Array(numPages), (_, index) => (
-              <div
-                key={`page_${index + 1}`}
-                ref={(el) => (pageRefs.current[index + 1] = el)}
-                className="mb-4 shadow-lg"
-              >
-                <Page
-                  pageNumber={index + 1}
-                  scale={scale}
-                  renderTextLayer={true}
-                  renderAnnotationLayer={true}
-                  className="bg-white"
-                />
-              </div>
-            ))}
+            {Array.from({ length: numPages }, (_, i) => {
+              const pageNumber = i + 1;
+              return (
+                <div
+                  key={`page_${pageNumber}`}
+                  ref={(el) => (pageRefs.current[pageNumber] = el)}
+                  data-pnum={pageNumber}
+                  className="mb-6 rounded bg-white shadow"
+                >
+                  <Page
+                    pageNumber={pageNumber}
+                    scale={scale}
+                    renderTextLayer
+                    renderAnnotationLayer
+                    className="bg-white"
+                  />
+                </div>
+              );
+            })}
           </Document>
-          </div>
         </div>
-      </ScrollArea>
+      </div>
     </div>
   );
 };
