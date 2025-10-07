@@ -1,16 +1,11 @@
-import { ReactNode } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { ChatWidget } from "./ChatWidget";
 import { TopNav } from "./TopNav";
 import { useAuth } from "@/hooks/useAuth";
 
-interface LayoutProps {
-  children: ReactNode;
-}
-
-export const Layout = ({ children }: LayoutProps) => {
+export default function Layout() {
   const { user } = useAuth();
   const location = useLocation();
   const isDocumentViewer = location.pathname === '/';
@@ -23,7 +18,7 @@ export const Layout = ({ children }: LayoutProps) => {
           <div className="flex-1 flex flex-col">
             <TopNav isDocumentViewer={isDocumentViewer} />
             <main className="flex-1 p-6">
-              {children}
+              <Outlet />
             </main>
           </div>
         </div>
@@ -31,4 +26,4 @@ export const Layout = ({ children }: LayoutProps) => {
       </SidebarProvider>
     </div>
   );
-};
+}
