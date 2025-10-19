@@ -756,21 +756,43 @@ export default function DocumentViewer() {
   };
 
   const handleTOCClick = (item: TOCItem) => {
+    console.log('TOC item clicked:', {
+      id: item.id,
+      text: item.toc_entry_text,
+      page: item.page_index,
+      para: item.para_label
+    });
+    
     setSelectedTOC(item.id);
     setTargetPage(item.page_index);
     if (item.para_label) {
       setTargetParagraph(item.para_label);
     }
+    
     // Update URL hash
     const hash = item.para_label 
       ? `p=${item.page_index}&para=${item.para_label}`
       : `p=${item.page_index}`;
     navigate(`#${hash}`, { replace: true });
     
+    console.log('Navigation updated to:', hash);
+    
     // Close drawer on mobile after selection
     if (isMobile) {
       setIsTOCOpen(false);
+      console.log('Mobile drawer closed');
     }
+  };
+
+  const getIndentClass = (level: number) => {
+    const indents: Record<number, string> = {
+      0: '',
+      1: 'ml-4',
+      2: 'ml-8', 
+      3: 'ml-12',
+      4: 'ml-16'
+    };
+    return indents[level] || 'ml-16';
   };
 
   const renderTOCItem = (item: TOCItem): React.ReactNode => {
@@ -779,7 +801,7 @@ export default function DocumentViewer() {
     
     return (
       <div key={item.id} className="mb-1">
-        <div className={`flex items-center gap-1 ${item.level > 0 ? `ml-${item.level * 4}` : ''}`}>
+        <div className={`flex items-center gap-1 ${getIndentClass(item.level)}`}>
           {hasChildren && (
             <Button
               variant="ghost"
