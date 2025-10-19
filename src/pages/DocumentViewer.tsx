@@ -27,340 +27,358 @@ interface TOCItem {
 
 const mockTOC: TOCItem[] = [
   {
-    id: "vol1",
-    volume_label: "Volume 1",
-    toc_entry_text: "Volume 1: History of Diving",
+    id: "ch1",
+    chapter_label: "Chapter 1",
+    toc_entry_text: "1 HISTORY OF DIVING",
     page_print_number: "1-1",
     page_index: 1,
     level: 0,
-    anchor_slug: "volume-1",
+    anchor_slug: "ch1",
     expanded: true,
     children: [
       {
-        id: "ch1",
-        chapter_label: "Chapter 1",
-        toc_entry_text: "1 HISTORY OF DIVING",
+        id: "1-1",
+        para_label: "1-1",
+        toc_entry_text: "1-1 INTRODUCTION",
         page_print_number: "1-1",
         page_index: 1,
         level: 1,
-        anchor_slug: "ch1",
+        anchor_slug: "para-1-1",
         expanded: true,
         children: [
           {
-            id: "1-1",
-            para_label: "1-1",
-            toc_entry_text: "1-1 INTRODUCTION",
+            id: "1-1.1",
+            para_label: "1-1.1",
+            toc_entry_text: "1-1.1 Purpose",
             page_print_number: "1-1",
             page_index: 1,
             level: 2,
-            anchor_slug: "para-1-1",
-            expanded: true,
-            children: [
-              {
-                id: "1-1-1",
-                para_label: "1-1.1",
-                toc_entry_text: "1-1.1 Purpose",
-                page_print_number: "1-1",
-                page_index: 1,
-                level: 3,
-                anchor_slug: "para-1-1-1"
-              },
-              {
-                id: "1-1-2",
-                para_label: "1-1.2",
-                toc_entry_text: "1-1.2 Scope",
-                page_print_number: "1-1",
-                page_index: 1,
-                level: 3,
-                anchor_slug: "para-1-1-2"
-              },
-              {
-                id: "1-1-3",
-                para_label: "1-1.3",
-                toc_entry_text: "1-1.3 Role of the U.S. Navy",
-                page_print_number: "1-1",
-                page_index: 1,
-                level: 3,
-                anchor_slug: "para-1-1-3"
-              }
-            ]
+            anchor_slug: "para-1-1-1"
           },
           {
-            id: "1-2",
-            para_label: "1-2",
-            toc_entry_text: "1-2 SURFACE-SUPPLIED AIR DIVING",
+            id: "1-1.2",
+            para_label: "1-1.2",
+            toc_entry_text: "1-1.2 Scope",
             page_print_number: "1-1",
             page_index: 1,
             level: 2,
-            anchor_slug: "para-1-2",
-            expanded: true,
-            children: [
-              {
-                id: "1-2-1",
-                para_label: "1-2.1",
-                toc_entry_text: "1-2.1 Breathing Tubes",
-                page_print_number: "1-2",
-                page_index: 2,
-                level: 3,
-                anchor_slug: "para-1-2-1"
-              },
-              {
-                id: "1-2-2",
-                para_label: "1-2.2",
-                toc_entry_text: "1-2.2 Breathing Bags",
-                page_print_number: "1-3",
-                page_index: 3,
-                level: 3,
-                anchor_slug: "para-1-2-2"
-              },
-              {
-                id: "1-2-3",
-                para_label: "1-2.3",
-                toc_entry_text: "1-2.3 Diving Bells",
-                page_print_number: "1-3",
-                page_index: 3,
-                level: 3,
-                anchor_slug: "para-1-2-3"
-              },
-              {
-                id: "1-2-4",
-                para_label: "1-2.4",
-                toc_entry_text: "1-2.4 Diving Dress Designs",
-                page_print_number: "1-3",
-                page_index: 3,
-                level: 3,
-                anchor_slug: "para-1-2-4",
-                expanded: false,
-                children: [
-                  {
-                    id: "1-2-4-1",
-                    para_label: "1-2.4.1",
-                    toc_entry_text: "1-2.4.1 Lethbridge's Diving Dress",
-                    page_print_number: "1-3",
-                    page_index: 3,
-                    level: 4,
-                    anchor_slug: "para-1-2-4-1"
-                  },
-                  {
-                    id: "1-2-4-2",
-                    para_label: "1-2.4.2",
-                    toc_entry_text: "1-2.4.2 Deane's Patented Diving Dress",
-                    page_print_number: "1-4",
-                    page_index: 4,
-                    level: 4,
-                    anchor_slug: "para-1-2-4-2"
-                  },
-                  {
-                    id: "1-2-4-3",
-                    para_label: "1-2.4.3",
-                    toc_entry_text: "1-2.4.3 Siebe's Improved Diving Dress",
-                    page_print_number: "1-4",
-                    page_index: 4,
-                    level: 4,
-                    anchor_slug: "para-1-2-4-3"
-                  },
-                  {
-                    id: "1-2-4-4",
-                    para_label: "1-2.4.4",
-                    toc_entry_text: "1-2.4.4 Salvage of the Royal George",
-                    page_print_number: "1-5",
-                    page_index: 5,
-                    level: 4,
-                    anchor_slug: "para-1-2-4-4"
-                  }
-                ]
-              },
-              {
-                id: "1-2-5",
-                para_label: "1-2.5",
-                toc_entry_text: "1-2.5 Caissons",
-                page_print_number: "1-5",
-                page_index: 5,
-                level: 3,
-                anchor_slug: "para-1-2-5"
-              },
-              {
-                id: "1-2-6",
-                para_label: "1-2.6",
-                toc_entry_text: "1-2.6 Physiological Discoveries",
-                page_print_number: "1-6",
-                page_index: 6,
-                level: 3,
-                anchor_slug: "para-1-2-6",
-                expanded: false,
-                children: [
-                  {
-                    id: "1-2-6-1",
-                    para_label: "1-2.6.1",
-                    toc_entry_text: "1-2.6.1 Caisson Disease (Decompression Sickness)",
-                    page_print_number: "1-6",
-                    page_index: 6,
-                    level: 4,
-                    anchor_slug: "para-1-2-6-1"
-                  },
-                  {
-                    id: "1-2-6-2",
-                    para_label: "1-2.6.2",
-                    toc_entry_text: "1-2.6.2 Inadequate Ventilation",
-                    page_print_number: "1-7",
-                    page_index: 7,
-                    level: 4,
-                    anchor_slug: "para-1-2-6-2"
-                  },
-                  {
-                    id: "1-2-6-3",
-                    para_label: "1-2.6.3",
-                    toc_entry_text: "1-2.6.3 Nitrogen Narcosis",
-                    page_print_number: "1-7",
-                    page_index: 7,
-                    level: 4,
-                    anchor_slug: "para-1-2-6-3"
-                  }
-                ]
-              },
-              {
-                id: "1-2-7",
-                para_label: "1-2.7",
-                toc_entry_text: "1-2.7 Armored Diving Suits",
-                page_print_number: "1-7",
-                page_index: 7,
-                level: 3,
-                anchor_slug: "para-1-2-7"
-              },
-              {
-                id: "1-2-8",
-                para_label: "1-2.8",
-                toc_entry_text: "1-2.8 MK V Deep-Sea Diving Dress",
-                page_print_number: "1-8",
-                page_index: 8,
-                level: 3,
-                anchor_slug: "para-1-2-8"
-              }
-            ]
+            anchor_slug: "para-1-1-2"
           },
           {
-            id: "1-3",
-            para_label: "1-3",
-            toc_entry_text: "1-3 SCUBA DIVING",
-            page_print_number: "1-8",
-            page_index: 8,
+            id: "1-1.3",
+            para_label: "1-1.3",
+            toc_entry_text: "1-1.3 Role of the U.S. Navy",
+            page_print_number: "1-1",
+            page_index: 1,
             level: 2,
-            anchor_slug: "para-1-3",
+            anchor_slug: "para-1-1-3"
+          }
+        ]
+      },
+      {
+        id: "1-2",
+        para_label: "1-2",
+        toc_entry_text: "1-2 SURFACE-SUPPLIED AIR DIVING",
+        page_print_number: "1-1",
+        page_index: 1,
+        level: 1,
+        anchor_slug: "para-1-2",
+        expanded: true,
+        children: [
+          {
+            id: "1-2.1",
+            para_label: "1-2.1",
+            toc_entry_text: "1-2.1 Breathing Tubes",
+            page_print_number: "1-2",
+            page_index: 2,
+            level: 2,
+            anchor_slug: "para-1-2-1"
+          },
+          {
+            id: "1-2.2",
+            para_label: "1-2.2",
+            toc_entry_text: "1-2.2 Breathing Bags",
+            page_print_number: "1-3",
+            page_index: 3,
+            level: 2,
+            anchor_slug: "para-1-2-2"
+          },
+          {
+            id: "1-2.3",
+            para_label: "1-2.3",
+            toc_entry_text: "1-2.3 Diving Bells",
+            page_print_number: "1-3",
+            page_index: 3,
+            level: 2,
+            anchor_slug: "para-1-2-3"
+          },
+          {
+            id: "1-2.4",
+            para_label: "1-2.4",
+            toc_entry_text: "1-2.4 Diving Dress Designs",
+            page_print_number: "1-3",
+            page_index: 3,
+            level: 2,
+            anchor_slug: "para-1-2-4",
             expanded: false,
             children: [
               {
-                id: "1-3-1",
-                para_label: "1-3.1",
-                toc_entry_text: "1-3.1 Open-Circuit SCUBA",
+                id: "1-2.4.1",
+                para_label: "1-2.4.1",
+                toc_entry_text: "1-2.4.1 Lethbridge's Diving Dress",
+                page_print_number: "1-3",
+                page_index: 3,
+                level: 3,
+                anchor_slug: "para-1-2-4-1"
+              },
+              {
+                id: "1-2.4.2",
+                para_label: "1-2.4.2",
+                toc_entry_text: "1-2.4.2 Deane's Patented Diving Dress",
+                page_print_number: "1-4",
+                page_index: 4,
+                level: 3,
+                anchor_slug: "para-1-2-4-2"
+              },
+              {
+                id: "1-2.4.3",
+                para_label: "1-2.4.3",
+                toc_entry_text: "1-2.4.3 Siebe's Improved Diving Dress",
+                page_print_number: "1-4",
+                page_index: 4,
+                level: 3,
+                anchor_slug: "para-1-2-4-3"
+              },
+              {
+                id: "1-2.4.4",
+                para_label: "1-2.4.4",
+                toc_entry_text: "1-2.4.4 Salvage of the HMS Royal George",
+                page_print_number: "1-5",
+                page_index: 5,
+                level: 3,
+                anchor_slug: "para-1-2-4-4"
+              }
+            ]
+          },
+          {
+            id: "1-2.5",
+            para_label: "1-2.5",
+            toc_entry_text: "1-2.5 Caissons",
+            page_print_number: "1-5",
+            page_index: 5,
+            level: 2,
+            anchor_slug: "para-1-2-5"
+          },
+          {
+            id: "1-2.6",
+            para_label: "1-2.6",
+            toc_entry_text: "1-2.6 Physiological Discoveries",
+            page_print_number: "1-6",
+            page_index: 6,
+            level: 2,
+            anchor_slug: "para-1-2-6",
+            expanded: false,
+            children: [
+              {
+                id: "1-2.6.1",
+                para_label: "1-2.6.1",
+                toc_entry_text: "1-2.6.1 Caisson Disease (Decompression Sickness)",
+                page_print_number: "1-6",
+                page_index: 6,
+                level: 3,
+                anchor_slug: "para-1-2-6-1"
+              },
+              {
+                id: "1-2.6.2",
+                para_label: "1-2.6.2",
+                toc_entry_text: "1-2.6.2 Inadequate Ventilation",
+                page_print_number: "1-7",
+                page_index: 7,
+                level: 3,
+                anchor_slug: "para-1-2-6-2"
+              },
+              {
+                id: "1-2.6.3",
+                para_label: "1-2.6.3",
+                toc_entry_text: "1-2.6.3 Nitrogen Narcosis",
+                page_print_number: "1-7",
+                page_index: 7,
+                level: 3,
+                anchor_slug: "para-1-2-6-3"
+              }
+            ]
+          },
+          {
+            id: "1-2.7",
+            para_label: "1-2.7",
+            toc_entry_text: "1-2.7 Armored Diving Suits",
+            page_print_number: "1-7",
+            page_index: 7,
+            level: 2,
+            anchor_slug: "para-1-2-7"
+          },
+          {
+            id: "1-2.8",
+            para_label: "1-2.8",
+            toc_entry_text: "1-2.8 MK V Deep-Sea Diving Dress",
+            page_print_number: "1-8",
+            page_index: 8,
+            level: 2,
+            anchor_slug: "para-1-2-8"
+          }
+        ]
+      },
+      {
+        id: "1-3",
+        para_label: "1-3",
+        toc_entry_text: "1-3 SCUBA DIVING",
+        page_print_number: "1-8",
+        page_index: 8,
+        level: 1,
+        anchor_slug: "para-1-3",
+        expanded: false,
+        children: [
+          {
+            id: "1-3.1",
+            para_label: "1-3.1",
+            toc_entry_text: "1-3.1 Open-Circuit SCUBA",
+            page_print_number: "1-9",
+            page_index: 9,
+            level: 2,
+            anchor_slug: "para-1-3-1",
+            expanded: false,
+            children: [
+              {
+                id: "1-3.1.1",
+                para_label: "1-3.1.1",
+                toc_entry_text: "1-3.1.1 Rouquayrol's Demand Regulator",
                 page_print_number: "1-9",
                 page_index: 9,
                 level: 3,
-                anchor_slug: "para-1-3-1",
-                expanded: false,
-                children: [
-                  {
-                    id: "1-3-1-1",
-                    para_label: "1-3.1.1",
-                    toc_entry_text: "1-3.1.1 Rouquayrol's Demand Regulator",
-                    page_print_number: "1-9",
-                    page_index: 9,
-                    level: 4,
-                    anchor_slug: "para-1-3-1-1"
-                  },
-                  {
-                    id: "1-3-1-2",
-                    para_label: "1-3.1.2",
-                    toc_entry_text: "1-3.1.2 LePrieur's Open-Circuit SCUBA Design",
-                    page_print_number: "1-9",
-                    page_index: 9,
-                    level: 4,
-                    anchor_slug: "para-1-3-1-2"
-                  },
-                  {
-                    id: "1-3-1-3",
-                    para_label: "1-3.1.3",
-                    toc_entry_text: "1-3.1.3 Cousteau and Gagnan Aqua-Lung",
-                    page_print_number: "1-10",
-                    page_index: 10,
-                    level: 4,
-                    anchor_slug: "para-1-3-1-3"
-                  },
-                  {
-                    id: "1-3-1-4",
-                    para_label: "1-3.1.4",
-                    toc_entry_text: "1-3.1.4 Impact of SCUBA on Diving",
-                    page_print_number: "1-10",
-                    page_index: 10,
-                    level: 4,
-                    anchor_slug: "para-1-3-1-4"
-                  }
-                ]
+                anchor_slug: "para-1-3-1-1"
               },
               {
-                id: "1-3-2",
-                para_label: "1-3.2",
-                toc_entry_text: "1-3.2 Closed-Circuit SCUBA",
+                id: "1-3.1.2",
+                para_label: "1-3.1.2",
+                toc_entry_text: "1-3.1.2 LePrieur's Open-Circuit SCUBA Design",
+                page_print_number: "1-9",
+                page_index: 9,
+                level: 3,
+                anchor_slug: "para-1-3-1-2"
+              },
+              {
+                id: "1-3.1.3",
+                para_label: "1-3.1.3",
+                toc_entry_text: "1-3.1.3 Cousteau and Gagnan's Aqua-Lung",
                 page_print_number: "1-10",
                 page_index: 10,
                 level: 3,
-                anchor_slug: "para-1-3-2"
+                anchor_slug: "para-1-3-1-3"
+              },
+              {
+                id: "1-3.1.4",
+                para_label: "1-3.1.4",
+                toc_entry_text: "1-3.1.4 Impact of SCUBA on Diving",
+                page_print_number: "1-10",
+                page_index: 10,
+                level: 3,
+                anchor_slug: "para-1-3-1-4"
               }
             ]
+          },
+          {
+            id: "1-3.2",
+            para_label: "1-3.2",
+            toc_entry_text: "1-3.2 Closed-Circuit SCUBA",
+            page_print_number: "1-10",
+            page_index: 10,
+            level: 2,
+            anchor_slug: "para-1-3-2",
+            expanded: false,
+            children: [
+              {
+                id: "1-3.2.1",
+                para_label: "1-3.2.1",
+                toc_entry_text: "1-3.2.1 Fleuss' Closed-Circuit SCUBA",
+                page_print_number: "1-10",
+                page_index: 10,
+                level: 3,
+                anchor_slug: "para-1-3-2-1"
+              },
+              {
+                id: "1-3.2.2",
+                para_label: "1-3.2.2",
+                toc_entry_text: "1-3.2.2 Modern Closed-Circuit Systems",
+                page_print_number: "1-11",
+                page_index: 11,
+                level: 3,
+                anchor_slug: "para-1-3-2-2"
+              }
+            ]
+          },
+          {
+            id: "1-3.3",
+            para_label: "1-3.3",
+            toc_entry_text: "1-3.3 Hazards of Using Oxygen in SCUBA",
+            page_print_number: "1-11",
+            page_index: 11,
+            level: 2,
+            anchor_slug: "para-1-3-3"
           }
         ]
       }
     ]
   },
   {
-    id: "vol2",
-    volume_label: "Volume 2", 
-    toc_entry_text: "Volume 2: Decompression and Mixed Gas Diving",
+    id: "ch2",
+    chapter_label: "Chapter 2",
+    toc_entry_text: "2 UNDERWATER PHYSICS",
     page_print_number: "2-1",
-    page_index: 200,
+    page_index: 50,
     level: 0,
-    anchor_slug: "volume-2",
-    expanded: true,
+    anchor_slug: "ch2",
+    expanded: false,
     children: [
-      { 
-        id: "ch9", 
-        chapter_label: "Chapter 9: Decompression Procedures",
-        toc_entry_text: "Chapter 9: Decompression Procedures", 
-        page_print_number: "9-1", 
-        page_index: 201, 
+      {
+        id: "2-1",
+        para_label: "2-1",
+        toc_entry_text: "2-1 INTRODUCTION",
+        page_print_number: "2-1",
+        page_index: 50,
         level: 1,
-        anchor_slug: "ch9",
-        expanded: true,
+        anchor_slug: "para-2-1",
         children: [
-          { 
-            id: "9-3", 
-            para_label: "9-3",
-            toc_entry_text: "9-3 Standard Air Decompression Tables", 
-            page_print_number: "9-15", 
-            page_index: 215, 
+          {
+            id: "2-1.1",
+            para_label: "2-1.1",
+            toc_entry_text: "2-1.1 Purpose",
+            page_print_number: "2-1",
+            page_index: 50,
             level: 2,
-            anchor_slug: "para-9-3" 
+            anchor_slug: "para-2-1-1"
           },
-          { 
-            id: "9-3-1", 
-            para_label: "9-3-1",
-            toc_entry_text: "9-3-1 Table Selection", 
-            page_print_number: "9-16", 
-            page_index: 216, 
-            level: 3,
-            anchor_slug: "para-9-3-1" 
-          },
-          { 
-            id: "9-3-2", 
-            para_label: "9-3-2",
-            toc_entry_text: "9-3-2 Decompression Stop Requirements", 
-            page_print_number: "9-18", 
-            page_index: 218, 
-            level: 3,
-            anchor_slug: "para-9-3-2" 
+          {
+            id: "2-1.2",
+            para_label: "2-1.2",
+            toc_entry_text: "2-1.2 Scope",
+            page_print_number: "2-1",
+            page_index: 50,
+            level: 2,
+            anchor_slug: "para-2-1-2"
           }
         ]
       }
     ]
+  },
+  {
+    id: "ch3",
+    chapter_label: "Chapter 3",
+    toc_entry_text: "3 UNDERWATER PHYSIOLOGY AND DIVING DISORDERS",
+    page_print_number: "3-1",
+    page_index: 100,
+    level: 0,
+    anchor_slug: "ch3",
+    expanded: false
   }
 ];
 
