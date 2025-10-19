@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
-import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Search } from "lucide-react";
+import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Search, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ErrorBoundary } from "./ErrorBoundary";
 
-// ---- PDF.js worker from CDN to avoid local worker fetch issues
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Bundle PDF.js worker locally instead of using CDN
+import workerSrc from "pdfjs-dist/build/pdf.worker.min.mjs?url";
+pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
 interface PDFViewerProps {
   pdfUrl: string;
@@ -164,40 +166,58 @@ export const PDFViewer = ({
         aria-label="PDF document viewer"
       >
         <div className="mx-auto w-full max-w-5xl px-4 lg:px-8">
-          <Document
-            file={pdfUrl}
-            onLoadSuccess={onLoadSuccess}
-            loading={
+          <ErrorBoundary
+            resetKeys={[pdfUrl]}
+            fallback={
               <div className="flex h-96 items-center justify-center">
-                <div className="text-muted-foreground">Loading PDF…</div>
-              </div>
-            }
-            error={
-              <div className="flex h-96 items-center justify-center">
-                <div className="text-destructive">Failed to load PDF</div>
-              </div>
-            }
-          >
-            {Array.from({ length: numPages }, (_, i) => {
-              const pageNumber = i + 1;
-              return (
-                <div
-                  key={`page_${pageNumber}`}
-                  ref={(el) => (pageRefs.current[pageNumber] = el)}
-                  data-pnum={pageNumber}
-                  className="mb-6 rounded bg-white shadow"
-                >
-                  <Page
-                    pageNumber={pageNumber}
-                    scale={scale}
-                    renderTextLayer
-                    renderAnnotationLayer
-                    className="bg-white"
-                  />
+                <div className="flex flex-col items-center gap-4 text-center">
+                  <AlertCircle className="h-12 w-12 text-destructive" />
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-semibold text-foreground">PDF Viewer Error</h3>
+                    <p className="text-sm text-muted-foreground max-w-md">
+                      The PDF viewer encountered an error. Please refresh the page or try again later.
+                    </p>
+                  </div>
                 </div>
-              );
-            })}
-          </Document>
+              </div>
+            }
+            onError={(error) => console.error('PDF Viewer Error:', error)}
+          >
+            <Document
+              file={pdfUrl}
+              onLoadSuccess={onLoadSuccess}
+              loading={
+                <div className="flex h-96 items-center justify-center">
+                  <div className="text-muted-foreground">Loading PDF…</div>
+                </div>
+              }
+              error={
+                <div className="flex h-96 items-center justify-center">
+                  <div className="text-destructive">Failed to load PDF</div>
+                </div>
+              }
+            >
+              {Array.from({ length: numPages }, (_, i) => {
+                const pageNumber = i + 1;
+                return (
+                  <div
+                    key={`page_${pageNumber}`}
+                    ref={(el) => (pageRefs.current[pageNumber] = el)}
+                    data-pnum={pageNumber}
+                    className="mb-6 rounded bg-white shadow"
+                  >
+                    <Page
+                      pageNumber={pageNumber}
+                      scale={scale}
+                      renderTextLayer
+                      renderAnnotationLayer
+                      className="bg-white"
+                    />
+                  </div>
+                );
+              })}
+            </Document>
+          </ErrorBoundary>
         </div>
       </div>
     </div>

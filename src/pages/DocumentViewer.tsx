@@ -10,6 +10,7 @@ import { PDFViewer } from "@/components/PDFViewer";
 import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { safeGetItem, safeSetItem } from "@/lib/utils";
 
 interface TOCItem {
   id: string;
@@ -654,7 +655,7 @@ export default function DocumentViewer() {
   
   // TOC visibility state with localStorage persistence
   const [isTOCOpen, setIsTOCOpen] = useState<boolean>(() => {
-    const saved = localStorage.getItem('toc-open');
+    const saved = safeGetItem('toc-open');
     return saved !== null ? JSON.parse(saved) : true;
   });
   
@@ -726,7 +727,7 @@ export default function DocumentViewer() {
 
   // Persist TOC state to localStorage
   useEffect(() => {
-    localStorage.setItem('toc-open', JSON.stringify(isTOCOpen));
+    safeSetItem('toc-open', JSON.stringify(isTOCOpen));
   }, [isTOCOpen]);
 
   // Close drawer with Esc key

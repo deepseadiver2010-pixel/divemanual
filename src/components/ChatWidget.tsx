@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { MessageCircle, Minimize2, X, Send, Bot, User, ExternalLink } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, safeGetItem, safeSetItem } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -37,10 +37,10 @@ export const ChatWidget = () => {
 
   // Auto-open on first visit
   useEffect(() => {
-    const hasVisited = localStorage.getItem('navy-dive-ai-visited');
+    const hasVisited = safeGetItem('navy-dive-ai-visited');
     if (!hasVisited) {
       setIsOpen(true);
-      localStorage.setItem('navy-dive-ai-visited', 'true');
+      safeSetItem('navy-dive-ai-visited', 'true');
       
       // Add welcome message
       setMessages([{
