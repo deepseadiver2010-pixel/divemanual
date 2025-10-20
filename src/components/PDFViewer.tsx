@@ -19,6 +19,8 @@ interface PDFViewerProps {
   targetParagraph?: string;
 }
 
+type PageDims = { w: number; h: number };
+
 export const PDFViewer = ({
   pdfUrl,
   onPageChange,
@@ -29,7 +31,7 @@ export const PDFViewer = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1.0);
   const [searchText, setSearchText] = useState("");
-  const [pageHeights, setPageHeights] = useState<Record<number, number>>({});
+  const [pageDims, setPageDims] = useState<Record<number, PageDims>>({});
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -37,7 +39,7 @@ export const PDFViewer = ({
   const rowVirtualizer = useVirtualizer({
     count: numPages,
     getScrollElement: () => scrollRef.current,
-    estimateSize: (index) => pageHeights[index + 1] || 1100,
+    estimateSize: (index) => (pageDims[index + 1]?.h ?? 1100),
     overscan: 3,
     measureElement:
       typeof window !== "undefined" && navigator.userAgent.indexOf("Firefox") === -1
@@ -75,11 +77,11 @@ export const PDFViewer = ({
     return () => clearTimeout(id);
   }, [targetParagraph, targetPage]);
 
-  // Remeasure on zoom
+  // Remeasure on zoom: clear cached dims so <Page onLoadSuccess> repopulates
   useEffect(() => {
     if (numPages > 0) {
       rowVirtualizer.measure();
-      setPageHeights({});
+      setPageDims({});
     }
   }, [scale, numPages]);
 
@@ -165,6 +167,7 @@ export const PDFViewer = ({
                 <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}>
                   {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                     const pageNumber = virtualRow.index + 1;
+                    const dims = pageDims[pageNumber];
                     return (
                       <div
                         key={virtualRow.key}
@@ -173,8 +176,9 @@ export const PDFViewer = ({
                         style={{
                           position: "absolute",
                           top: 0,
-                          left: "50%",                                   // center anchor
-                          transform: `translate(-50%, ${virtualRow.start}px)`, // center row
+                          left: "50%",                                          // anchor at container center
+                          transform: `translate(-50%, ${virtualRow.start}px)`,   // center the row
+                          width: dims ? `${dims.w}px` : "auto",                  // lock exact page width
                         }}
                         className="mb-6"
                       >
@@ -182,12 +186,14 @@ export const PDFViewer = ({
                           <Page
                             pageNumber={pageNumber}
                             scale={scale}
-                            renderTextLayer={false}         // disable heavy layers by default
+                            renderTextLayer={false}
                             renderAnnotationLayer={false}
-                            className="bg-white"
+                            className="bg-white block"
                             onLoadSuccess={(page) => {
-                              const height = page.height * scale;
-                              setPageHeights((prev) => ({ ...prev, [pageNumber]: height }));
+                              // page.width/height are for scale=1. Multiply by current scale.
+                              const w = page.width * scale;
+                              const h = page.height * scale;
+                              setPageDims((prev) => (prev[pageNumber]?.w === w && prev[pageNumber]?.h === h ? prev : { ...prev, [pageNumber]: { w, h } }));
                             }}
                           />
                         </div>
