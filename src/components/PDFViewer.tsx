@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorBoundary } from "./ErrorBoundary";
 
-// Worker pinned to the pdfjs version in node_modules
+// Worker pinned to installed pdfjs-dist
 if (typeof window !== "undefined") {
   pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 }
@@ -32,17 +32,15 @@ export const PDFViewer = ({
   const [scale, setScale] = useState(1.0);
   const [searchText, setSearchText] = useState("");
   const [pageDims, setPageDims] = useState<Record<number, PageDims>>({});
-  const [docProxy, setDocProxy] = useState<any>(null);
 
-  const prefetched = useRef<Set<number>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Virtual scrolling
   const rowVirtualizer = useVirtualizer({
     count: numPages,
     getScrollElement: () => scrollRef.current,
-    estimateSize: (index) => (pageDims[index + 1]?.h ?? 1100),
-    overscan: 8,
+    estimateSize: (index) => pageDims[index + 1]?.h ?? 1100,
+    overscan: 6,
     measureElement:
       typeof window !== "undefined" && navigator.userAgent.indexOf("Firefox") === -1
         ? (el) => el?.getBoundingClientRect().height
@@ -68,7 +66,7 @@ export const PDFViewer = ({
     rowVirtualizer.scrollToIndex(targetPage - 1, { align: "start", behavior: "smooth" });
   }, [targetPage, numPages, rowVirtualizer]);
 
-  // Crude find
+  // Temporary find
   useEffect(() => {
     if (!targetParagraph || !targetPage) return;
     const id = setTimeout(() => {
@@ -84,33 +82,15 @@ export const PDFViewer = ({
     if (numPages > 0) {
       rowVirtualizer.measure();
       setPageDims({});
-      prefetched.current.clear();
     }
   }, [scale, numPages]);
 
-  // Prefetch operator lists for images/fonts for current window (±3)
-  useEffect(() => {
-    if (!docProxy || numPages === 0) return;
-    const start = Math.max(1, currentPage - 3);
-    const end = Math.min(numPages, currentPage + 3);
+  const onLoadSuccess = ({ numPages }: { numPages: number }) => {
+    setNumPages(numPages);
+  };
 
-    for (let p = start; p <= end; p++) {
-      if (prefetched.current.has(p)) continue;
-      prefetched.current.add(p);
-      docProxy
-        .getPage(p)
-        .then((page) => page.getOperatorList()) // warms image XObjects and fonts
-        .catch(() => {
-          // on failure, allow retry later
-          prefetched.current.delete(p);
-        });
-    }
-  }, [docProxy, currentPage, numPages]);
-
-  const onDocLoad = (pdf: any) => {
-    setDocProxy(pdf);
-    setNumPages(pdf.numPages);
-    prefetched.current.clear();
+  const onLoadError = (err: any) => {
+    console.error("PDF Document load error:", err);
   };
 
   const scrollToPage = (pageNum: number) => {
@@ -165,7 +145,13 @@ export const PDFViewer = ({
       </div>
 
       {/* Virtualized scroll container */}
-      <div ref={scrollRef} className="flex-1 overflow-auto bg-muted/30 py-6" role="region" aria-label="PDF document viewer" style={{ scrollbarGutter: "stable both-edges" }}>
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-auto bg-muted/30 py-6"
+        role="region"
+        aria-label="PDF document viewer"
+        style={{ scrollbarGutter: "stable both-edges" }}
+      >
         <div className="w-full">
           <div className="flex justify-center" style={{ padding: 0 }}>
             <ErrorBoundary
@@ -185,11 +171,11 @@ export const PDFViewer = ({
             >
               <Document
                 file={pdfUrl}
-                onLoadSuccess={onDocLoad}
+                onLoadSuccess={onLoadSuccess}
+                onLoadError={onLoadError}
                 loading={<div className="flex h-96 items-center justify-center"><div className="text-muted-foreground">Loading PDF…</div></div>}
                 error={<div className="flex h-96 items-center justify-center"><div className="text-destructive">Failed to load PDF</div></div>}
               >
-                {/* Virtual container */}
                 <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}>
                   {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                     const pageNumber = virtualRow.index + 1;
@@ -209,7 +195,6 @@ export const PDFViewer = ({
                           transform: `translate3d(0, ${virtualRow.start}px, 0)`,
                           display: "flex",
                           justifyContent: "center",
-                          contain: "layout paint",
                         }}
                         className="mb-6"
                       >
@@ -218,7 +203,7 @@ export const PDFViewer = ({
                             pageNumber={pageNumber}
                             scale={scale}
                             renderTextLayer={false}
-                            renderAnnotationLayer={false}
+                            renderAnnotationLayer={true}   // keep images reliable
                             className="bg-white block"
                             onLoadSuccess={(page) => {
                               const wPx = Math.round(page.width * scale);
@@ -230,7 +215,6 @@ export const PDFViewer = ({
                               );
                             }}
                             onRenderSuccess={() => {
-                              // re-measure after paint to keep centering exact
                               requestAnimationFrame(() => rowVirtualizer.measure());
                             }}
                           />
