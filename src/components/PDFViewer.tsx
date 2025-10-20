@@ -169,8 +169,8 @@ export const PDFViewer = ({
         role="region"
         aria-label="PDF document viewer"
       >
-        <div className="mx-auto w-full">
-          <div className="mx-auto" style={{ width: 'fit-content', maxWidth: '100vw', padding: 0 }}>
+        <div className="w-full">
+          <div className="flex justify-center" style={{ padding: 0 }}>
           <ErrorBoundary
             resetKeys={[pdfUrl]}
             fallback={
@@ -227,7 +227,7 @@ export const PDFViewer = ({
                       }}
                       className="mb-6"
                     >
-                      <div className="rounded bg-white shadow mx-auto">
+                      <div className="rounded bg-white shadow">
                         <Page
                           pageNumber={pageNumber}
                           scale={scale}
