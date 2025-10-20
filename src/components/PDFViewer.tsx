@@ -139,7 +139,7 @@ export const PDFViewer = ({
       </div>
 
       {/* Virtualized scroll container */}
-      <div ref={scrollRef} className="flex-1 overflow-auto bg-muted/30 py-6" role="region" aria-label="PDF document viewer">
+      <div ref={scrollRef} className="flex-1 overflow-auto bg-muted/30 py-6" role="region" aria-label="PDF document viewer" style={{ scrollbarGutter: "stable both-edges" }}>
         <div className="w-full">
           <div className="flex justify-center" style={{ padding: 0 }}>
             <ErrorBoundary
