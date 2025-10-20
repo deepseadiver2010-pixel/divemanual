@@ -17,12 +17,14 @@ interface PDFViewerProps {
   onPageChange?: (pageNumber: number) => void;
   targetPage?: number;
   targetParagraph?: string;
+  toolbarOffset?: number;
 }
 
 type PageDims = { w: number; h: number };
 
 export const PDFViewer = ({
   pdfUrl,
+  toolbarOffset = 0,
   onPageChange,
   targetPage,
   targetParagraph,
@@ -128,7 +130,7 @@ export const PDFViewer = ({
   return (
     <div className="flex h-full flex-col">
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-4 border-b bg-background p-4 sticky top-0 z-10">
+      <div className="flex items-center justify-between gap-4 border-b bg-background p-4 sticky z-20" style={{ top: toolbarOffset }}>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => scrollToPage(Math.max(1, currentPage - 1))} disabled={currentPage <= 1} aria-label="Previous page">
             <ChevronLeft className="h-4 w-4" />

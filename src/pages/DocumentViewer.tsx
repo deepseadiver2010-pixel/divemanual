@@ -663,6 +663,20 @@ export default function DocumentViewer() {
   const location = useLocation();
   const navigate = useNavigate();
   const tocRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
+
+  // Measure header height dynamically for PDF toolbar offset
+  useEffect(() => {
+    if (!headerRef.current) return;
+    const el = headerRef.current;
+    const ro = new ResizeObserver(() => {
+      setHeaderHeight(el.offsetHeight);
+    });
+    ro.observe(el);
+    setHeaderHeight(el.offsetHeight);
+    return () => ro.disconnect();
+  }, []);
 
   // Resolve the Navy Diving Manual PDF URL (Storage first, fallback to public file)
   useEffect(() => {
@@ -927,7 +941,7 @@ export default function DocumentViewer() {
       {/* Document Content - Full width */}
       <Card className="flex-1 flex flex-col">
         {/* Top Bar with TOC Toggle, Current Location and Copy Link */}
-        <CardHeader className="border-b sticky top-0 bg-background z-20">
+        <CardHeader ref={headerRef} className="border-b sticky top-0 bg-background z-30">
           <div className="flex items-center gap-3">
             {/* TOC Toggle Button - Always visible */}
             <Button
@@ -1008,6 +1022,7 @@ export default function DocumentViewer() {
                   targetPage={targetPage}
                   targetParagraph={targetParagraph}
                   onPageChange={handlePageChange}
+                  toolbarOffset={headerHeight}
                 />
               ) : (
                 <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
