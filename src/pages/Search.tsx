@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Search as SearchIcon, Filter, BookOpen, ExternalLink, AlertTriangle, Info, AlertCircle } from "lucide-react";
+import { Search as SearchIcon, Filter, BookOpen, ExternalLink, AlertTriangle, Info, AlertCircle, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface SearchResult {
   id: string;
@@ -19,55 +21,16 @@ interface SearchResult {
   relevanceScore: number;
 }
 
-const mockResults: SearchResult[] = [
-  {
-    id: '1',
-    title: 'Standard Air Decompression Tables',
-    volume: 'Volume 2',
-    chapter: 'Chapter 9',
-    page: '9-15',
-    excerpt: 'The standard air decompression tables provide the basis for all air diving operations. These tables specify the required decompression stops based on maximum depth reached during the dive...',
-    type: 'text',
-    relevanceScore: 0.95
-  },
-  {
-    id: '2',
-    title: 'Decompression Safety Warning',
-    volume: 'Volume 2', 
-    chapter: 'Chapter 9',
-    page: '9-15',
-    excerpt: 'WARNING: Failure to follow decompression procedures can result in decompression sickness, which may cause permanent injury or death.',
-    type: 'warning',
-    relevanceScore: 0.92
-  },
-  {
-    id: '3',
-    title: 'Emergency Decompression Procedures',
-    volume: 'Volume 2',
-    chapter: 'Chapter 9', 
-    page: '9-23',
-    excerpt: 'In emergency situations where standard decompression cannot be completed, divers must follow emergency ascent procedures...',
-    type: 'text',
-    relevanceScore: 0.88
-  },
-  {
-    id: '4',
-    title: 'Bottom Time Calculation',
-    volume: 'Volume 2',
-    chapter: 'Chapter 9',
-    page: '9-18',
-    excerpt: 'CAUTION: Bottom time begins when the diver leaves the surface and ends when the diver begins ascent from maximum depth.',
-    type: 'caution',
-    relevanceScore: 0.85
-  }
-];
-
 export default function Search() {
-  const [searchQuery, setSearchQuery] = useState('decompression');
-  const [searchType, setSearchType] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchMode, setSearchMode] = useState<'full-text' | 'semantic'>('full-text');
   const [volumeFilter, setVolumeFilter] = useState('all');
   const [safetyFilter, setSafetyFilter] = useState('all');
-  const [results, setResults] = useState<SearchResult[]>(mockResults);
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [totalResults, setTotalResults] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const { toast } = useToast();
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -87,9 +50,48 @@ export default function Search() {
     }
   };
 
-  const handleSearch = () => {
-    // Simulate search logic
-    console.log('Searching for:', searchQuery);
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      toast({
+        title: "Search query required",
+        description: "Please enter a search term",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('search', {
+        body: {
+          query: searchQuery,
+          searchType: searchMode,
+          volumeFilter,
+          safetyFilter,
+          page: currentPage,
+          pageSize: 20
+        }
+      });
+
+      if (error) throw error;
+
+      setResults(data.results || []);
+      setTotalResults(data.totalCount || 0);
+      
+      toast({
+        title: "Search completed",
+        description: `Found ${data.totalCount || 0} results`
+      });
+    } catch (error) {
+      console.error('Search error:', error);
+      toast({
+        title: "Search failed",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -113,13 +115,17 @@ export default function Search() {
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               />
             </div>
-            <Button onClick={handleSearch} size="lg" variant="hero">
-              <SearchIcon className="w-4 h-4 mr-2" />
-              Search
+            <Button onClick={handleSearch} size="lg" variant="hero" disabled={isLoading}>
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <SearchIcon className="w-4 h-4 mr-2" />
+              )}
+              {isLoading ? 'Searching...' : 'Search'}
             </Button>
           </div>
 
-          <Tabs defaultValue="full-text" className="w-full">
+          <Tabs value={searchMode} onValueChange={(v) => setSearchMode(v as 'full-text' | 'semantic')} className="w-full">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="full-text">Full-Text Search</TabsTrigger>
               <TabsTrigger value="semantic">Semantic Search</TabsTrigger>
@@ -171,13 +177,26 @@ export default function Search() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">
-                Search Results ({results.length} found)
+                Search Results ({totalResults} found)
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
               <ScrollArea className="h-[600px]">
                 <div className="space-y-4 p-6">
-                  {results.map((result) => (
+                  {isLoading ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-4">
+                      <Loader2 className="w-8 h-8 animate-spin text-[hsl(var(--navy-primary))]" />
+                      <p className="text-muted-foreground">Searching the manual...</p>
+                    </div>
+                  ) : results.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-4">
+                      <SearchIcon className="w-12 h-12 text-muted-foreground" />
+                      <p className="text-muted-foreground">
+                        {searchQuery ? 'No results found. Try different search terms.' : 'Enter a search query to begin.'}
+                      </p>
+                    </div>
+                  ) : (
+                    results.map((result) => (
                     <Card key={result.id} className={`border-l-4 ${getTypeColor(result.type)}`}>
                       <CardContent className="p-4">
                         <div className="flex items-start justify-between">
@@ -214,7 +233,8 @@ export default function Search() {
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                    ))
+                  )}
                 </div>
               </ScrollArea>
             </CardContent>
@@ -245,7 +265,7 @@ export default function Search() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-sm">Recent Searches</CardTitle>
+              <CardTitle className="text-sm">Quick Searches</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2">
               {['decompression procedures', 'emergency ascent', 'dive tables', 'safety protocols'].map((term) => (
@@ -254,7 +274,10 @@ export default function Search() {
                   variant="ghost"
                   size="sm"
                   className="w-full justify-start text-xs h-8"
-                  onClick={() => setSearchQuery(term)}
+                  onClick={() => {
+                    setSearchQuery(term);
+                    setTimeout(handleSearch, 100);
+                  }}
                 >
                   {term}
                 </Button>
