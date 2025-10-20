@@ -225,7 +225,7 @@ export const PDFViewer = ({
                         width: '100%',
                         transform: `translateY(${virtualRow.start}px)`,
                       }}
-                      className="mb-6"
+                      className="mb-6 flex justify-center"
                     >
                       <div className="rounded bg-white shadow">
                         <Page
@@ -233,7 +233,7 @@ export const PDFViewer = ({
                           scale={scale}
                           renderTextLayer
                           renderAnnotationLayer
-                          className="bg-white mx-auto"
+                          className="bg-white"
                           onLoadSuccess={(page) => {
                             // Cache the actual page height for better estimates
                             const height = page.height * scale;
