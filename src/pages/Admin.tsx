@@ -2,16 +2,82 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, FileText, CheckCircle, AlertCircle } from "lucide-react";
+import { Loader2, FileText, CheckCircle, AlertCircle, Upload } from "lucide-react";
 
 export default function Admin() {
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState("");
   const [result, setResult] = useState<any>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [bucketName, setBucketName] = useState("manuals");
+  const [uploadedPath, setUploadedPath] = useState<string | null>(null);
   const { toast } = useToast();
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && file.type === 'application/pdf') {
+      setSelectedFile(file);
+      setUploadedPath(null);
+    } else {
+      toast({
+        title: "Invalid File",
+        description: "Please select a PDF file",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      toast({
+        title: "No File Selected",
+        description: "Please select a PDF file first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    setStatus("Uploading PDF to storage...");
+
+    try {
+      const filePath = `navy-diving-manual.pdf`;
+      
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from(bucketName)
+        .upload(filePath, selectedFile, {
+          cacheControl: '3600',
+          upsert: true // Replace if exists
+        });
+
+      if (error) throw error;
+
+      setUploadedPath(filePath);
+      setStatus("Upload complete!");
+      
+      toast({
+        title: "Success!",
+        description: `Uploaded ${selectedFile.name} to storage`,
+      });
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      setStatus("Error uploading PDF");
+      toast({
+        title: "Upload Error",
+        description: error.message || "Failed to upload PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleProcessPDF = async () => {
     setIsProcessing(true);
@@ -22,10 +88,17 @@ export default function Admin() {
     try {
       // Call the process-pdf edge function
       const { data, error } = await supabase.functions.invoke('process-pdf', {
-        body: {}
+        body: { 
+          bucketName,
+          filePath: uploadedPath || 'navy-diving-manual.pdf'
+        }
       });
 
       if (error) throw error;
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
 
       setResult(data);
       setProgress(100);
@@ -58,11 +131,77 @@ export default function Admin() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5" />
-            PDF Processing
+            <Upload className="h-5 w-5" />
+            Upload Manual
           </CardTitle>
           <CardDescription>
-            Process the Navy Diving Manual PDF and populate the database with searchable chunks.
+            Upload the Navy Diving Manual PDF to storage before processing.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="bucket">Storage Bucket</Label>
+            <Input
+              id="bucket"
+              value={bucketName}
+              onChange={(e) => setBucketName(e.target.value)}
+              placeholder="manuals"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="pdf-file">Select PDF File</Label>
+            <Input
+              id="pdf-file"
+              type="file"
+              accept=".pdf"
+              onChange={handleFileSelect}
+              disabled={isUploading}
+            />
+            {selectedFile && (
+              <p className="text-sm text-muted-foreground">
+                Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+              </p>
+            )}
+          </div>
+
+          <Button
+            onClick={handleUpload}
+            disabled={!selectedFile || isUploading}
+            className="w-full"
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload to Storage
+              </>
+            )}
+          </Button>
+
+          {uploadedPath && (
+            <div className="rounded-lg border bg-card p-3">
+              <p className="text-sm text-green-600 flex items-center gap-2">
+                <CheckCircle className="h-4 w-4" />
+                Uploaded to: {bucketName}/{uploadedPath}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Process Manual
+          </CardTitle>
+          <CardDescription>
+            Extract text, generate embeddings, and populate the database with searchable chunks.
             This will take approximately 20-40 minutes to complete.
           </CardDescription>
         </CardHeader>

@@ -1,5 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// @ts-ignore - PDF.js types not available in Deno
+import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/+esm';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,25 +19,144 @@ serve(async (req) => {
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    console.log('Starting PDF processing...');
+    const { bucketName = 'manuals', filePath = 'navy-diving-manual.pdf' } = await req.json();
 
-    // Download PDF from public folder
-    const pdfUrl = `${supabaseUrl.replace('.supabase.co', '.supabase.co')}/storage/v1/object/public/navy-diving-manual.pdf`;
-    console.log('Fetching PDF from:', pdfUrl);
-    
-    const pdfResponse = await fetch(pdfUrl);
-    if (!pdfResponse.ok) {
-      // Try alternative: direct URL from public folder
-      const publicPdfUrl = `${new URL(req.url).origin}/navy-diving-manual.pdf`;
-      console.log('Trying public URL:', publicPdfUrl);
-      const altResponse = await fetch(publicPdfUrl);
-      if (!altResponse.ok) {
-        throw new Error(`Failed to fetch PDF: ${altResponse.status}`);
-      }
-      return await processPdf(altResponse, supabase, lovableApiKey);
+    console.log('Starting PDF processing...', { bucketName, filePath });
+
+    // Download PDF from Supabase Storage using SDK
+    const { data: pdfData, error: downloadError } = await supabase.storage
+      .from(bucketName)
+      .download(filePath);
+
+    if (downloadError) {
+      console.error('Storage download error:', downloadError);
+      throw new Error(`Failed to download PDF from storage: ${downloadError.message}`);
     }
-    
-    return await processPdf(pdfResponse, supabase, lovableApiKey);
+
+    const pdfArrayBuffer = await pdfData.arrayBuffer();
+    console.log(`PDF downloaded: ${pdfArrayBuffer.byteLength} bytes`);
+
+    // Parse PDF with pdf.js
+    const pdfDoc = await pdfjsLib.getDocument({ data: pdfArrayBuffer }).promise;
+    const numPages = pdfDoc.numPages;
+    console.log(`PDF has ${numPages} pages`);
+
+    // Extract text from all pages
+    let fullText = '';
+    const pageTexts: Array<{ pageNum: number; text: string }> = [];
+
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+      const page = await pdfDoc.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ');
+      
+      pageTexts.push({ pageNum, text: pageText });
+      fullText += `\n--- Page ${pageNum} ---\n${pageText}\n`;
+      
+      if (pageNum % 50 === 0) {
+        console.log(`Extracted text from ${pageNum}/${numPages} pages`);
+      }
+    }
+
+    console.log(`Text extraction complete: ${fullText.length} characters`);
+
+    // Get or create document record
+    const { data: existingDoc } = await supabase
+      .from('documents')
+      .select('id')
+      .eq('title', 'U.S. Navy Diving Manual')
+      .single();
+
+    let documentId: string;
+    if (existingDoc) {
+      documentId = existingDoc.id;
+      console.log('Using existing document:', documentId);
+    } else {
+      const { data: newDoc, error: docError } = await supabase
+        .from('documents')
+        .insert({
+          title: 'U.S. Navy Diving Manual',
+          description: 'Official U.S. Navy Diving Manual Revision 7',
+          version: 'Revision 7',
+          file_url: `${bucketName}/${filePath}`,
+          total_pages: numPages,
+          is_published: true,
+          published_at: new Date().toISOString()
+        })
+        .select('id')
+        .single();
+
+      if (docError) throw docError;
+      documentId = newDoc.id;
+      console.log('Created new document:', documentId);
+    }
+
+    // Clear existing chunks for this document
+    await supabase.from('chunks').delete().eq('document_id', documentId);
+    console.log('Cleared existing chunks');
+
+    // Process text into chunks
+    const chunks = chunkText(fullText, pageTexts, documentId);
+    console.log(`Created ${chunks.length} chunks`);
+
+    // Process chunks in batches with embeddings
+    const batchSize = 10;
+    let processedCount = 0;
+    let failedEmbeddings = 0;
+
+    for (let i = 0; i < chunks.length; i += batchSize) {
+      const batch = chunks.slice(i, i + batchSize);
+      
+      // Generate embeddings for batch with error handling
+      const embeddings = await Promise.all(
+        batch.map(async (chunk) => {
+          try {
+            return await generateEmbedding(chunk.content, lovableApiKey);
+          } catch (error) {
+            console.error(`Failed to generate embedding for chunk ${i}:`, error);
+            failedEmbeddings++;
+            return null; // Will be stored without embedding for full-text search fallback
+          }
+        })
+      );
+
+      // Prepare chunks with embeddings
+      const chunksWithEmbeddings = batch.map((chunk, idx) => ({
+        ...chunk,
+        embedding: embeddings[idx]
+      }));
+
+      // Insert batch
+      const { error: insertError } = await supabase
+        .from('chunks')
+        .insert(chunksWithEmbeddings);
+
+      if (insertError) {
+        console.error('Error inserting batch:', insertError);
+        throw insertError;
+      }
+
+      processedCount += batch.length;
+      console.log(`Processed ${processedCount}/${chunks.length} chunks (${Math.round(processedCount/chunks.length*100)}%)`);
+    }
+
+    const response = {
+      success: true,
+      message: `Processed ${chunks.length} chunks from ${numPages} pages`,
+      documentId,
+      chunksCreated: chunks.length,
+      failedEmbeddings,
+      totalPages: numPages
+    };
+
+    console.log('Processing complete:', response);
+
+    return new Response(
+      JSON.stringify(response),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
 
   } catch (error) {
     console.error('Error processing PDF:', error);
@@ -46,109 +167,13 @@ serve(async (req) => {
   }
 });
 
-async function processPdf(pdfResponse: Response, supabase: any, lovableApiKey: string) {
-  const pdfBuffer = await pdfResponse.arrayBuffer();
-  console.log(`PDF downloaded: ${pdfBuffer.byteLength} bytes`);
-
-  // Use PDF.js for parsing (available in Deno)
-  // For now, we'll use a simple text extraction approach
-  // In production, you might want to use a more sophisticated PDF parser
-  
-  // Simple fallback: just create chunks from the PDF we know exists
-  console.log('Creating chunks from known manual structure...');
-  
-  const pdfData = {
-    numpages: 991,
-    text: '' // Will be populated from actual parsing or manual entry
-  };
-  
-  console.log(`PDF parsed: ${pdfData.numpages} pages, ${pdfData.text.length} characters`);
-
-  // Get or create document record
-  const { data: existingDoc } = await supabase
-    .from('documents')
-    .select('id')
-    .eq('title', 'U.S. Navy Diving Manual')
-    .single();
-
-  let documentId: string;
-  if (existingDoc) {
-    documentId = existingDoc.id;
-    console.log('Using existing document:', documentId);
-  } else {
-    const { data: newDoc, error: docError } = await supabase
-      .from('documents')
-      .insert({
-        title: 'U.S. Navy Diving Manual',
-        description: 'Official U.S. Navy Diving Manual Revision 7',
-        version: 'Revision 7',
-        file_url: '/navy-diving-manual.pdf',
-        total_pages: pdfData.numpages,
-        is_published: true,
-        published_at: new Date().toISOString()
-      })
-      .select('id')
-      .single();
-
-    if (docError) throw docError;
-    documentId = newDoc.id;
-    console.log('Created new document:', documentId);
-  }
-
-  // Clear existing chunks for this document
-  await supabase.from('chunks').delete().eq('document_id', documentId);
-  console.log('Cleared existing chunks');
-
-  // Process text into chunks
-  const chunks = await chunkText(pdfData.text, documentId);
-  console.log(`Created ${chunks.length} chunks`);
-
-  // Process chunks in batches
-  const batchSize = 10;
-  let processedCount = 0;
-
-  for (let i = 0; i < chunks.length; i += batchSize) {
-    const batch = chunks.slice(i, i + batchSize);
-    
-    // Generate embeddings for batch
-    const embeddings = await Promise.all(
-      batch.map(chunk => generateEmbedding(chunk.content, lovableApiKey))
-    );
-
-    // Prepare chunks with embeddings
-    const chunksWithEmbeddings = batch.map((chunk, idx) => ({
-      ...chunk,
-      embedding: embeddings[idx]
-    }));
-
-    // Insert batch
-    const { error: insertError } = await supabase
-      .from('chunks')
-      .insert(chunksWithEmbeddings);
-
-    if (insertError) {
-      console.error('Error inserting batch:', insertError);
-      throw insertError;
-    }
-
-    processedCount += batch.length;
-    console.log(`Processed ${processedCount}/${chunks.length} chunks (${Math.round(processedCount/chunks.length*100)}%)`);
-  }
-
-  return new Response(
-    JSON.stringify({ 
-      success: true, 
-      message: `Processed ${chunks.length} chunks from ${pdfData.numpages} pages`,
-      documentId,
-      chunksCreated: chunks.length
-    }),
-    { headers: { 'Content-Type': 'application/json' } }
-  );
-}
-
-async function chunkText(text: string, documentId: string) {
+function chunkText(
+  fullText: string,
+  pageTexts: Array<{ pageNum: number; text: string }>,
+  documentId: string
+) {
   const chunks = [];
-  const lines = text.split('\n');
+  const lines = fullText.split('\n');
   
   let currentChunk = '';
   let currentVolume = 'Unknown';
@@ -159,6 +184,13 @@ async function chunkText(text: string, documentId: string) {
 
   for (const line of lines) {
     const trimmed = line.trim();
+    
+    // Track page numbers from markers
+    const pageMatch = trimmed.match(/^---\s*Page\s+(\d+)\s*---$/);
+    if (pageMatch) {
+      pageNumber = parseInt(pageMatch[1]);
+      continue;
+    }
     
     // Detect volume
     if (trimmed.match(/^VOLUME\s+[IVX\d]+/i)) {
@@ -173,14 +205,6 @@ async function chunkText(text: string, documentId: string) {
     // Detect section
     if (trimmed.match(/^\d+[-\.]\d+/)) {
       currentSection = trimmed;
-    }
-    
-    // Detect page numbers
-    if (trimmed.match(/^Page\s+\d+/i) || trimmed.match(/^\d+\s*$/)) {
-      const pageMatch = trimmed.match(/\d+/);
-      if (pageMatch) {
-        pageNumber = parseInt(pageMatch[0]);
-      }
     }
 
     // Detect warnings
@@ -242,7 +266,15 @@ async function generateEmbedding(text: string, apiKey: string): Promise<number[]
 
   if (!response.ok) {
     const error = await response.text();
-    console.error('Embedding API error:', error);
+    console.error('Embedding API error:', response.status, error);
+    
+    if (response.status === 429) {
+      throw new Error('Rate limit exceeded. Please try again later.');
+    }
+    if (response.status === 402) {
+      throw new Error('Payment required. Please add credits to your Lovable AI workspace.');
+    }
+    
     throw new Error(`Failed to generate embedding: ${response.status}`);
   }
 
