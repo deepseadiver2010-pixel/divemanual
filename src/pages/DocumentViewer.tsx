@@ -927,7 +927,7 @@ export default function DocumentViewer() {
       {/* Document Content - Full width */}
       <Card className="flex-1 flex flex-col">
         {/* Top Bar with TOC Toggle, Current Location and Copy Link */}
-        <CardHeader className="border-b sticky top-0 bg-background z-10">
+        <CardHeader className="border-b sticky top-0 bg-background z-20">
           <div className="flex items-center gap-3">
             {/* TOC Toggle Button - Always visible */}
             <Button
