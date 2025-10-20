@@ -170,7 +170,7 @@ export const PDFViewer = ({
         aria-label="PDF document viewer"
       >
         <div className="mx-auto w-full">
-          <div className="mx-auto px-4" style={{ maxWidth: 'min(100%, 850px)' }}>
+          <div className="mx-auto" style={{ width: 'fit-content', maxWidth: '100vw', padding: 0 }}>
           <ErrorBoundary
             resetKeys={[pdfUrl]}
             fallback={
