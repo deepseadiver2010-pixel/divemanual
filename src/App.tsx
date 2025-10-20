@@ -7,6 +7,7 @@ import { ThemeProvider } from "next-themes";
 import DocumentViewer from "./pages/DocumentViewer";
 import Search from "./pages/Search";
 import Flashcards from "./pages/Flashcards";
+import DiveBuddyAI from "./pages/DiveBuddyAI";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
@@ -26,12 +27,13 @@ export default function App() {
             <Routes>
               <Route path="/auth" element={<Auth />} />
               <Route element={<Layout />}>
-                <Route element={<ProtectedRoute />}>
-                  <Route path="/" element={<DocumentViewer />} />
-                  <Route path="/search" element={<Search />} />
-                  <Route path="/flashcards" element={<Flashcards />} />
-                  <Route path="*" element={<NotFound />} />
-                </Route>
+              <Route element={<ProtectedRoute />}>
+                <Route path="/" element={<DocumentViewer />} />
+                <Route path="/dive-buddy" element={<DiveBuddyAI />} />
+                <Route path="/search" element={<Search />} />
+                <Route path="/flashcards" element={<Flashcards />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
               </Route>
             </Routes>
           </TooltipProvider>

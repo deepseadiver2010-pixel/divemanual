@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { MessageCircle, Minimize2, X, Send, Bot, User, ExternalLink } from "lucide-react";
+import { MessageCircle, Minimize2, X, Send, Bot, User, ExternalLink, Maximize } from "lucide-react";
 import { cn, safeGetItem, safeSetItem } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +35,7 @@ export const ChatWidget = () => {
   const dragRef = useRef<HTMLDivElement>(null);
   const startPos = useRef({ x: 0, y: 0 });
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   // Auto-open on first visit
   useEffect(() => {
@@ -217,6 +219,15 @@ export const ChatWidget = () => {
               Navy AI Assistant
             </CardTitle>
             <div className="flex items-center gap-1">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 text-white hover:bg-white/20"
+                onClick={() => navigate('/dive-buddy')}
+                title="Open Full Chat"
+              >
+                <Maximize className="w-3 h-3" />
+              </Button>
               <Button
                 size="icon"
                 variant="ghost"

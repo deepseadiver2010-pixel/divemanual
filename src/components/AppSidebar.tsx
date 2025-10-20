@@ -1,4 +1,4 @@
-import { BookOpen, Search, Brain, CreditCard as Cards, Settings, Shield, BarChart3, Upload } from "lucide-react";
+import { BookOpen, Search, Brain, CreditCard as Cards, Settings, Shield, BarChart3, Upload, MessageCircle } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 
 import {
@@ -20,6 +20,7 @@ interface AppSidebarProps {
 
 const mainItems = [
   { title: "Document Viewer", url: "/", icon: BookOpen },
+  { title: "Dive Buddy AI", url: "/dive-buddy", icon: MessageCircle },
   { title: "Search", url: "/search", icon: Search },
   { title: "Flashcards", url: "/flashcards", icon: Cards },
 ];
