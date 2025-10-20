@@ -32,7 +32,9 @@ export const PDFViewer = ({
   const [scale, setScale] = useState(1.0);
   const [searchText, setSearchText] = useState("");
   const [pageDims, setPageDims] = useState<Record<number, PageDims>>({});
+  const [docProxy, setDocProxy] = useState<any>(null);
 
+  const prefetched = useRef<Set<number>>(new Set());
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   // Virtual scrolling
@@ -77,15 +79,39 @@ export const PDFViewer = ({
     return () => clearTimeout(id);
   }, [targetParagraph, targetPage]);
 
-  // Remeasure on zoom: clear cached dims so <Page onLoadSuccess> repopulates
+  // Remeasure on zoom
   useEffect(() => {
     if (numPages > 0) {
       rowVirtualizer.measure();
       setPageDims({});
+      prefetched.current.clear();
     }
   }, [scale, numPages]);
 
-  const onLoadSuccess = ({ numPages }: { numPages: number }) => setNumPages(numPages);
+  // Prefetch operator lists for images/fonts for current window (±3)
+  useEffect(() => {
+    if (!docProxy || numPages === 0) return;
+    const start = Math.max(1, currentPage - 3);
+    const end = Math.min(numPages, currentPage + 3);
+
+    for (let p = start; p <= end; p++) {
+      if (prefetched.current.has(p)) continue;
+      prefetched.current.add(p);
+      docProxy
+        .getPage(p)
+        .then((page) => page.getOperatorList()) // warms image XObjects and fonts
+        .catch(() => {
+          // on failure, allow retry later
+          prefetched.current.delete(p);
+        });
+    }
+  }, [docProxy, currentPage, numPages]);
+
+  const onDocLoad = (pdf: any) => {
+    setDocProxy(pdf);
+    setNumPages(pdf.numPages);
+    prefetched.current.clear();
+  };
 
   const scrollToPage = (pageNum: number) => {
     if (pageNum >= 1 && pageNum <= numPages) {
@@ -159,7 +185,7 @@ export const PDFViewer = ({
             >
               <Document
                 file={pdfUrl}
-                onLoadSuccess={onLoadSuccess}
+                onLoadSuccess={onDocLoad}
                 loading={<div className="flex h-96 items-center justify-center"><div className="text-muted-foreground">Loading PDF…</div></div>}
                 error={<div className="flex h-96 items-center justify-center"><div className="text-destructive">Failed to load PDF</div></div>}
               >
@@ -179,10 +205,11 @@ export const PDFViewer = ({
                           position: "absolute",
                           top: 0,
                           left: 0,
-                          right: 0,                                   // full row width
+                          right: 0,
                           transform: `translate3d(0, ${virtualRow.start}px, 0)`,
                           display: "flex",
-                          justifyContent: "center",                   // center without 50% math
+                          justifyContent: "center",
+                          contain: "layout paint",
                         }}
                         className="mb-6"
                       >
@@ -201,6 +228,9 @@ export const PDFViewer = ({
                                   ? prev
                                   : { ...prev, [pageNumber]: { w: wPx, h: hPx } }
                               );
+                            }}
+                            onRenderSuccess={() => {
+                              // re-measure after paint to keep centering exact
                               requestAnimationFrame(() => rowVirtualizer.measure());
                             }}
                           />
