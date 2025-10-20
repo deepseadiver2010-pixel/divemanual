@@ -1,10 +1,12 @@
 # Navy Diving Manual PDF Setup
 
-## Required File
+## Current File
 
-Place the official U.S. Navy Diving Manual PDF in this directory:
+The optimized U.S. Navy Diving Manual (Revision 7) is located in this directory:
 - **Filename**: `navy-diving-manual.pdf`
 - **Location**: `/public/navy-diving-manual.pdf`
+- **Version**: Revision 7 (991 pages)
+- **Format**: Linearized/optimized for web delivery (progressive rendering)
 
 ## Alternative: Use Supabase Storage
 
@@ -26,3 +28,4 @@ const pdfUrl = `${supabaseUrl}/storage/v1/object/public/manuals/navy-diving-manu
 - Ensure all volumes are included
 - File size should be optimized for web delivery (typically under 50MB)
 - PDF should have text layer enabled for search functionality
+- **Recommended**: Use linearized PDFs for faster initial page rendering (pages load progressively as download continues)
