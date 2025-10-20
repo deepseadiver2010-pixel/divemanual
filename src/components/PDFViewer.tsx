@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Search, AlertCircle } from "lucide-react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorBoundary } from "./ErrorBoundary";
@@ -27,53 +28,46 @@ export const PDFViewer = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [scale, setScale] = useState(1.0);
   const [searchText, setSearchText] = useState("");
+  const [pageHeights, setPageHeights] = useState<Record<number, number>>({});
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
-  const pageRefs = useRef<Record<number, HTMLDivElement | null>>({});
 
-  // Observe which page is in view (relative to the scroll container)
+  // Virtual scrolling - only render visible pages
+  const rowVirtualizer = useVirtualizer({
+    count: numPages,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: (index) => pageHeights[index + 1] || 1100,
+    overscan: 3, // Render 3 extra pages above/below viewport for smooth scrolling
+    measureElement:
+      typeof window !== "undefined" && navigator.userAgent.indexOf("Firefox") === -1
+        ? (element) => element?.getBoundingClientRect().height
+        : undefined,
+  });
+
+  // Track current page based on visible items
   useEffect(() => {
-    const root = scrollRef.current;
-    if (!root) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        // pick the entry with the largest intersection ratio > 0
-        let best: IntersectionObserverEntry | null = null;
-        for (const e of entries) {
-          if (!best || e.intersectionRatio > best.intersectionRatio) best = e;
-        }
-        if (best?.isIntersecting) {
-          const numAttr = (best.target as HTMLElement).dataset["pnum"];
-          if (numAttr) {
-            const visible = parseInt(numAttr, 10);
-            if (visible !== currentPage) {
-              setCurrentPage(visible);
-              onPageChange?.(visible);
-            }
-          }
-        }
-      },
-      { root, threshold: [0.1, 0.25, 0.5, 0.75] }
-    );
-
-    Object.entries(pageRefs.current).forEach(([k, el]) => {
-      if (el) observer.observe(el);
-    });
-
-    return () => observer.disconnect();
-  }, [numPages, onPageChange, currentPage]);
+    const virtualItems = rowVirtualizer.getVirtualItems();
+    if (virtualItems.length > 0) {
+      // Get the middle visible item
+      const middleIndex = Math.floor(virtualItems.length / 2);
+      const middleItem = virtualItems[middleIndex];
+      const pageNumber = middleItem.index + 1;
+      
+      if (pageNumber !== currentPage) {
+        setCurrentPage(pageNumber);
+        onPageChange?.(pageNumber);
+      }
+    }
+  }, [rowVirtualizer.getVirtualItems(), onPageChange]);
 
   // Scroll to target page when available
   useEffect(() => {
     if (!targetPage || targetPage < 1 || targetPage > numPages) return;
-    const el = pageRefs.current[targetPage];
-    if (el && scrollRef.current) {
-      const container = scrollRef.current;
-      const top = el.offsetTop; // relative to scroll container
-      container.scrollTo({ top: top - 16, behavior: "smooth" });
-    }
-  }, [targetPage, numPages]);
+    rowVirtualizer.scrollToIndex(targetPage - 1, {
+      align: "start",
+      behavior: "smooth",
+    });
+  }, [targetPage, numPages, rowVirtualizer]);
 
   // (Temporary) rough paragraph find using window.find
   useEffect(() => {
@@ -87,15 +81,25 @@ export const PDFViewer = ({
     return () => clearTimeout(id);
   }, [targetParagraph, targetPage]);
 
+  // Remeasure when scale changes
+  useEffect(() => {
+    if (numPages > 0) {
+      rowVirtualizer.measure();
+      // Clear cached heights to force remeasurement
+      setPageHeights({});
+    }
+  }, [scale, numPages]);
+
   const onLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages);
   };
 
   const scrollToPage = (pageNum: number) => {
-    const el = pageRefs.current[pageNum];
-    if (el && scrollRef.current) {
-      const container = scrollRef.current;
-      container.scrollTo({ top: el.offsetTop - 16, behavior: "smooth" });
+    if (pageNum >= 1 && pageNum <= numPages) {
+      rowVirtualizer.scrollToIndex(pageNum - 1, {
+        align: "start",
+        behavior: "smooth",
+      });
     }
   };
 
@@ -158,11 +162,10 @@ export const PDFViewer = ({
         </div>
       </div>
 
-      {/* Single, explicit scroll container to keep centering correct */}
+      {/* Virtualized scroll container */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-auto bg-muted/30 py-6"
-        // optional: role and aria for better a11y
         role="region"
         aria-label="PDF document viewer"
       >
@@ -198,25 +201,52 @@ export const PDFViewer = ({
                 </div>
               }
             >
-              {Array.from({ length: numPages }, (_, i) => {
-                const pageNumber = i + 1;
-                return (
-                  <div
-                    key={`page_${pageNumber}`}
-                    ref={(el) => (pageRefs.current[pageNumber] = el)}
-                    data-pnum={pageNumber}
-                    className="mb-6 rounded bg-white shadow"
-                  >
-                    <Page
-                      pageNumber={pageNumber}
-                      scale={scale}
-                      renderTextLayer
-                      renderAnnotationLayer
-                      className="bg-white"
-                    />
-                  </div>
-                );
-              })}
+              {/* Virtual container with total height */}
+              <div
+                style={{
+                  height: `${rowVirtualizer.getTotalSize()}px`,
+                  width: '100%',
+                  position: 'relative',
+                }}
+              >
+                {/* Only render visible pages */}
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const pageNumber = virtualRow.index + 1;
+                  return (
+                    <div
+                      key={virtualRow.key}
+                      data-index={virtualRow.index}
+                      ref={rowVirtualizer.measureElement}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                      className="mb-6"
+                    >
+                      <div className="rounded bg-white shadow">
+                        <Page
+                          pageNumber={pageNumber}
+                          scale={scale}
+                          renderTextLayer
+                          renderAnnotationLayer
+                          className="bg-white"
+                          onLoadSuccess={(page) => {
+                            // Cache the actual page height for better estimates
+                            const height = page.height * scale;
+                            setPageHeights((prev) => ({
+                              ...prev,
+                              [pageNumber]: height,
+                            }));
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </Document>
           </ErrorBoundary>
         </div>
