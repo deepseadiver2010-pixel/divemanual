@@ -191,7 +191,7 @@ export const PDFViewer = ({
                             pageNumber={pageNumber}
                             scale={scale}
                             renderTextLayer={false}
-                            renderAnnotationLayer={true}
+                            renderAnnotationLayer={false}
                             className="bg-white block"
                             onLoadSuccess={(page) => {
                               const wPx = Math.round(page.width * scale);
