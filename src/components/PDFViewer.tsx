@@ -169,8 +169,8 @@ export const PDFViewer = ({
         role="region"
         aria-label="PDF document viewer"
       >
-        <div className="mx-auto w-full px-4 lg:px-8">
-          <div className="mx-auto" style={{ maxWidth: '210mm' }}>
+        <div className="mx-auto w-full">
+          <div className="mx-auto px-4" style={{ maxWidth: 'min(100%, 850px)' }}>
           <ErrorBoundary
             resetKeys={[pdfUrl]}
             fallback={
@@ -230,7 +230,6 @@ export const PDFViewer = ({
                       <div className="rounded bg-white shadow mx-auto">
                         <Page
                           pageNumber={pageNumber}
-                          width={794} // A4 width in pixels at 96 DPI (210mm)
                           scale={scale}
                           renderTextLayer
                           renderAnnotationLayer
