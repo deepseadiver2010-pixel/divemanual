@@ -17,7 +17,7 @@ export default function Layout() {
           <AppSidebar isDocumentViewer={isDocumentViewer} />
           <div className="flex-1 flex flex-col">
             <TopNav isDocumentViewer={isDocumentViewer} />
-            <main className="flex-1 p-6">
+            <main className={isDocumentViewer ? "flex-1" : "flex-1 p-6"}>
               <Outlet />
             </main>
           </div>
