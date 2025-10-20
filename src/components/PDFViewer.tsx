@@ -221,11 +221,10 @@ export const PDFViewer = ({
                       style={{
                         position: 'absolute',
                         top: 0,
-                        left: 0,
-                        width: '100%',
-                        transform: `translateY(${virtualRow.start}px)`,
+                        left: '50%',
+                        transform: `translate(-50%, ${virtualRow.start}px)`,
                       }}
-                      className="mb-6 flex justify-center"
+                      className="mb-6"
                     >
                       <div className="rounded bg-white shadow">
                         <Page
