@@ -159,10 +159,6 @@ export const PDFViewer = ({
             >
               <Document
                 file={pdfUrl}
-                options={{
-                  cMapUrl: 'https://unpkg.com/pdfjs-dist@4.10.38/cmaps/',
-                  standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@4.10.38/standard_fonts/',
-                }}
                 onLoadSuccess={onLoadSuccess}
                 loading={<div className="flex h-96 items-center justify-center"><div className="text-muted-foreground">Loading PDF…</div></div>}
                 error={<div className="flex h-96 items-center justify-center"><div className="text-destructive">Failed to load PDF</div></div>}
