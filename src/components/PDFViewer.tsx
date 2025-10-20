@@ -168,6 +168,8 @@ export const PDFViewer = ({
                   {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                     const pageNumber = virtualRow.index + 1;
                     const dims = pageDims[pageNumber];
+                    const w = dims ? Math.round(dims.w) : undefined;
+
                     return (
                       <div
                         key={virtualRow.key}
@@ -176,13 +178,15 @@ export const PDFViewer = ({
                         style={{
                           position: "absolute",
                           top: 0,
-                          left: "50%",                                          // anchor at container center
-                          transform: `translate(-50%, ${virtualRow.start}px)`,   // center the row
-                          width: dims ? `${dims.w}px` : "auto",                  // lock exact page width
+                          left: 0,
+                          right: 0,                                   // full row width
+                          transform: `translate3d(0, ${virtualRow.start}px, 0)`,
+                          display: "flex",
+                          justifyContent: "center",                   // center without 50% math
                         }}
                         className="mb-6"
                       >
-                        <div className="rounded bg-white shadow">
+                        <div className="rounded bg-white shadow" style={w ? { width: `${w}px` } : undefined}>
                           <Page
                             pageNumber={pageNumber}
                             scale={scale}
@@ -190,10 +194,13 @@ export const PDFViewer = ({
                             renderAnnotationLayer={false}
                             className="bg-white block"
                             onLoadSuccess={(page) => {
-                              // page.width/height are for scale=1. Multiply by current scale.
-                              const w = page.width * scale;
-                              const h = page.height * scale;
-                              setPageDims((prev) => (prev[pageNumber]?.w === w && prev[pageNumber]?.h === h ? prev : { ...prev, [pageNumber]: { w, h } }));
+                              const wPx = Math.round(page.width * scale);
+                              const hPx = Math.round(page.height * scale);
+                              setPageDims((prev) =>
+                                prev[pageNumber]?.w === wPx && prev[pageNumber]?.h === hPx
+                                  ? prev
+                                  : { ...prev, [pageNumber]: { w: wPx, h: hPx } }
+                              );
                             }}
                           />
                         </div>
