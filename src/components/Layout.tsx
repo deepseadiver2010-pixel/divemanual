@@ -3,6 +3,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { ChatWidget } from "./ChatWidget";
 import { TopNav } from "./TopNav";
+import { PWAInstallPrompt } from "./PWAInstallPrompt";
 import { useAuth } from "@/hooks/useAuth";
 
 export default function Layout() {
@@ -23,6 +24,7 @@ export default function Layout() {
           </div>
         </div>
         {user && <ChatWidget />}
+        <PWAInstallPrompt />
       </SidebarProvider>
     </div>
   );
