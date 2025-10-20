@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 /* React PDF required styles */
-@import 'react-pdf/dist/Page/TextLayer.css';
-@import 'react-pdf/dist/Page/AnnotationLayer.css';
+@import 'react-pdf/dist/esm/Page/TextLayer.css';
+@import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
 
 /* Navy Diving Manual AI Platform Design System
 All colors MUST be HSL. Professional military-inspired design.

@@ -32,8 +32,10 @@ export const PDFViewer = ({
   const [scale, setScale] = useState(1.0);
   const [searchText, setSearchText] = useState("");
   const [pageDims, setPageDims] = useState<Record<number, PageDims>>({});
+  const [docProxy, setDocProxy] = useState<any>(null);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const prefetched = useRef<Set<number>>(new Set());
 
   // Virtual scrolling
   const rowVirtualizer = useVirtualizer({
@@ -82,11 +84,32 @@ export const PDFViewer = ({
     if (numPages > 0) {
       rowVirtualizer.measure();
       setPageDims({});
+      prefetched.current.clear();
     }
   }, [scale, numPages]);
 
-  const onLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
+  // Prefetch operator lists for images/fonts for current window (±3)
+  useEffect(() => {
+    if (!docProxy || numPages === 0) return;
+    const start = Math.max(1, currentPage - 3);
+    const end = Math.min(numPages, currentPage + 3);
+
+    for (let p = start; p <= end; p++) {
+      if (prefetched.current.has(p)) continue;
+      prefetched.current.add(p);
+      docProxy
+        .getPage(p)
+        .then((page: any) => page.getOperatorList())
+        .catch(() => {
+          prefetched.current.delete(p);
+        });
+    }
+  }, [docProxy, currentPage, numPages]);
+
+  const onDocLoad = (pdf: any) => {
+    setDocProxy(pdf);
+    setNumPages(pdf.numPages);
+    prefetched.current.clear();
   };
 
   const onLoadError = (err: any) => {
@@ -171,7 +194,7 @@ export const PDFViewer = ({
             >
               <Document
                 file={pdfUrl}
-                onLoadSuccess={onLoadSuccess}
+                onLoadSuccess={onDocLoad}
                 onLoadError={onLoadError}
                 loading={<div className="flex h-96 items-center justify-center"><div className="text-muted-foreground">Loading PDF…</div></div>}
                 error={<div className="flex h-96 items-center justify-center"><div className="text-destructive">Failed to load PDF</div></div>}
