@@ -169,7 +169,8 @@ export const PDFViewer = ({
         role="region"
         aria-label="PDF document viewer"
       >
-        <div className="mx-auto w-full max-w-5xl px-4 lg:px-8">
+        <div className="mx-auto w-full px-4 lg:px-8">
+          <div className="mx-auto" style={{ maxWidth: '210mm' }}>
           <ErrorBoundary
             resetKeys={[pdfUrl]}
             fallback={
@@ -226,13 +227,14 @@ export const PDFViewer = ({
                       }}
                       className="mb-6"
                     >
-                      <div className="rounded bg-white shadow">
+                      <div className="rounded bg-white shadow mx-auto">
                         <Page
                           pageNumber={pageNumber}
+                          width={794} // A4 width in pixels at 96 DPI (210mm)
                           scale={scale}
                           renderTextLayer
                           renderAnnotationLayer
-                          className="bg-white"
+                          className="bg-white mx-auto"
                           onLoadSuccess={(page) => {
                             // Cache the actual page height for better estimates
                             const height = page.height * scale;
@@ -249,6 +251,7 @@ export const PDFViewer = ({
               </div>
             </Document>
           </ErrorBoundary>
+          </div>
         </div>
       </div>
     </div>
