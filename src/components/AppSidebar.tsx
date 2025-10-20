@@ -26,7 +26,7 @@ const mainItems = [
 ];
 
 const adminItems = [
-  { title: "Document Upload", url: "/admin/upload", icon: Upload },
+  { title: "Process PDF", url: "/admin", icon: Upload },
   { title: "User Management", url: "/admin/users", icon: Shield },
   { title: "Analytics", url: "/admin/analytics", icon: BarChart3 },
   { title: "Settings", url: "/admin/settings", icon: Settings },

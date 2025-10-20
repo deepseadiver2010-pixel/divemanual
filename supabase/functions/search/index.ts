@@ -31,13 +31,40 @@ serve(async (req) => {
     let totalCount = 0;
 
     if (searchType === 'semantic') {
+      // Generate embedding for semantic search
+      const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+      if (!LOVABLE_API_KEY) {
+        throw new Error('LOVABLE_API_KEY not configured');
+      }
+
+      const embeddingResponse = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'text-embedding-3-small',
+          input: query.substring(0, 8000)
+        }),
+      });
+
+      if (!embeddingResponse.ok) {
+        throw new Error(`Failed to generate embedding: ${embeddingResponse.status}`);
+      }
+
+      const embeddingData = await embeddingResponse.json();
+      const embedding = embeddingData.data[0].embedding;
+
       // Semantic search using embeddings
       const { data: chunks, error: searchError } = await supabase.rpc(
         'match_chunks',
         {
-          query_text: query,
+          query_embedding: embedding,
           match_threshold: 0.7,
-          match_count: pageSize
+          match_count: pageSize,
+          volume_filter: volumeFilter && volumeFilter !== 'all' ? volumeFilter : null,
+          safety_filter: safetyFilter && safetyFilter !== 'all' ? safetyFilter : null
         }
       );
 

@@ -528,6 +528,45 @@ export type Database = {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: unknown
       }
+      match_chunks: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+          safety_filter?: string
+          volume_filter?: string
+        }
+        Returns: {
+          chapter: string
+          content: string
+          document_id: string
+          id: string
+          page_number: number
+          section: string
+          similarity: number
+          volume: string
+          warning_flags: string[]
+        }[]
+      }
+      search_chunks_fulltext: {
+        Args: {
+          match_count?: number
+          safety_filter?: string
+          search_query: string
+          volume_filter?: string
+        }
+        Returns: {
+          chapter: string
+          content: string
+          document_id: string
+          id: string
+          page_number: number
+          section: string
+          similarity: number
+          volume: string
+          warning_flags: string[]
+        }[]
+      }
       sparsevec_out: {
         Args: { "": unknown }
         Returns: unknown

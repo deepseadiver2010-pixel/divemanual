@@ -64,25 +64,45 @@ serve(async (req) => {
       
     if (historyError) throw historyError;
 
-    // Perform semantic search on chunks
-    const { data: chunks, error: searchError } = await supabase
-      .from('chunks')
-      .select('content, volume, chapter, page_number, warning_flags')
-      .textSearch('content', message)
-      .limit(5);
-      
-    if (searchError) throw searchError;
-
-    // Build context from retrieved chunks
-    const context = chunks?.map(chunk => 
-      `${chunk.volume} - ${chunk.chapter} - Page ${chunk.page_number}:\n${chunk.content}`
-    ).join('\n\n') || "";
-
     // Get LOVABLE_API_KEY from environment
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
+
+    // Generate embedding for semantic search
+    const embeddingResponse = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'text-embedding-3-small',
+        input: message.substring(0, 8000)
+      }),
+    });
+
+    if (!embeddingResponse.ok) {
+      throw new Error(`Failed to generate embedding: ${embeddingResponse.status}`);
+    }
+
+    const embeddingData = await embeddingResponse.json();
+    const embedding = embeddingData.data[0].embedding;
+
+    // Perform semantic search on chunks using RPC
+    const { data: chunks, error: searchError } = await supabase.rpc('match_chunks', {
+      query_embedding: embedding,
+      match_threshold: 0.7,
+      match_count: 5
+    });
+      
+    if (searchError) throw searchError;
+
+    // Build context from retrieved chunks
+    const context = chunks?.map((chunk: any) => 
+      `${chunk.volume} - ${chunk.chapter} - Page ${chunk.page_number}:\n${chunk.content}`
+    ).join('\n\n') || "";
 
     // Call Lovable AI with RAG context
     const systemPrompt = `You are a Navy Diving Manual AI assistant. You must ONLY answer questions based on the provided manual content. 
@@ -143,7 +163,7 @@ ${context}`;
     const aiResponse = aiData.choices[0].message.content;
 
     // Extract citations from chunks and format them
-    const citations = chunks?.map(chunk => ({
+    const citations = chunks?.map((chunk: any) => ({
       volume: chunk.volume,
       chapter: chunk.chapter,
       page: chunk.page_number.toString(),

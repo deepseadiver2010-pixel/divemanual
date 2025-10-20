@@ -8,6 +8,7 @@ import DocumentViewer from "./pages/DocumentViewer";
 import Search from "./pages/Search";
 import Flashcards from "./pages/Flashcards";
 import DiveBuddyAI from "./pages/DiveBuddyAI";
+import Admin from "./pages/Admin";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
@@ -32,6 +33,7 @@ export default function App() {
                 <Route path="/dive-buddy" element={<DiveBuddyAI />} />
                 <Route path="/search" element={<Search />} />
                 <Route path="/flashcards" element={<Flashcards />} />
+                <Route path="/admin" element={<Admin />} />
                 <Route path="*" element={<NotFound />} />
               </Route>
               </Route>
