@@ -40,7 +40,7 @@ export const PDFViewer = ({
     count: numPages,
     getScrollElement: () => scrollRef.current,
     estimateSize: (index) => (pageDims[index + 1]?.h ?? 1100),
-    overscan: 3,
+    overscan: 8,
     measureElement:
       typeof window !== "undefined" && navigator.userAgent.indexOf("Firefox") === -1
         ? (el) => el?.getBoundingClientRect().height
@@ -159,6 +159,10 @@ export const PDFViewer = ({
             >
               <Document
                 file={pdfUrl}
+                options={{
+                  cMapUrl: 'https://unpkg.com/pdfjs-dist@4.10.38/cmaps/',
+                  standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@4.10.38/standard_fonts/',
+                }}
                 onLoadSuccess={onLoadSuccess}
                 loading={<div className="flex h-96 items-center justify-center"><div className="text-muted-foreground">Loading PDF…</div></div>}
                 error={<div className="flex h-96 items-center justify-center"><div className="text-destructive">Failed to load PDF</div></div>}
@@ -191,7 +195,7 @@ export const PDFViewer = ({
                             pageNumber={pageNumber}
                             scale={scale}
                             renderTextLayer={false}
-                            renderAnnotationLayer={false}
+                            renderAnnotationLayer={true}
                             className="bg-white block"
                             onLoadSuccess={(page) => {
                               const wPx = Math.round(page.width * scale);
@@ -201,6 +205,7 @@ export const PDFViewer = ({
                                   ? prev
                                   : { ...prev, [pageNumber]: { w: wPx, h: hPx } }
                               );
+                              requestAnimationFrame(() => rowVirtualizer.measure());
                             }}
                           />
                         </div>
