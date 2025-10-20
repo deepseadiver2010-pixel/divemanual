@@ -1,3 +1,4 @@
+// src/components/PDFViewer.tsx
 import { useState, useEffect, useRef } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import { ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Search, AlertCircle } from "lucide-react";
@@ -6,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ErrorBoundary } from "./ErrorBoundary";
 
-// Set worker source to match the version used by react-pdf
+// Worker pinned to the pdfjs version in node_modules
 if (typeof window !== "undefined") {
   pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 }
@@ -32,47 +33,40 @@ export const PDFViewer = ({
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Virtual scrolling - only render visible pages
+  // Virtual scrolling
   const rowVirtualizer = useVirtualizer({
     count: numPages,
     getScrollElement: () => scrollRef.current,
     estimateSize: (index) => pageHeights[index + 1] || 1100,
-    overscan: 3, // Render 3 extra pages above/below viewport for smooth scrolling
+    overscan: 3,
     measureElement:
       typeof window !== "undefined" && navigator.userAgent.indexOf("Firefox") === -1
-        ? (element) => element?.getBoundingClientRect().height
+        ? (el) => el?.getBoundingClientRect().height
         : undefined,
   });
 
-  // Track current page based on visible items
+  // Track current page
   useEffect(() => {
-    const virtualItems = rowVirtualizer.getVirtualItems();
-    if (virtualItems.length > 0) {
-      // Get the middle visible item
-      const middleIndex = Math.floor(virtualItems.length / 2);
-      const middleItem = virtualItems[middleIndex];
-      const pageNumber = middleItem.index + 1;
-      
-      if (pageNumber !== currentPage) {
-        setCurrentPage(pageNumber);
-        onPageChange?.(pageNumber);
+    const items = rowVirtualizer.getVirtualItems();
+    if (items.length) {
+      const mid = items[Math.floor(items.length / 2)];
+      const p = mid.index + 1;
+      if (p !== currentPage) {
+        setCurrentPage(p);
+        onPageChange?.(p);
       }
     }
   }, [rowVirtualizer.getVirtualItems(), onPageChange]);
 
-  // Scroll to target page when available
+  // Deep-link scroll
   useEffect(() => {
     if (!targetPage || targetPage < 1 || targetPage > numPages) return;
-    rowVirtualizer.scrollToIndex(targetPage - 1, {
-      align: "start",
-      behavior: "smooth",
-    });
+    rowVirtualizer.scrollToIndex(targetPage - 1, { align: "start", behavior: "smooth" });
   }, [targetPage, numPages, rowVirtualizer]);
 
-  // (Temporary) rough paragraph find using window.find
+  // Crude find
   useEffect(() => {
     if (!targetParagraph || !targetPage) return;
-    // delay to ensure page text layer is rendered
     const id = setTimeout(() => {
       const win = window as any;
       const terms = targetParagraph.replace(/[-.]/g, " ");
@@ -81,25 +75,19 @@ export const PDFViewer = ({
     return () => clearTimeout(id);
   }, [targetParagraph, targetPage]);
 
-  // Remeasure when scale changes
+  // Remeasure on zoom
   useEffect(() => {
     if (numPages > 0) {
       rowVirtualizer.measure();
-      // Clear cached heights to force remeasurement
       setPageHeights({});
     }
   }, [scale, numPages]);
 
-  const onLoadSuccess = ({ numPages }: { numPages: number }) => {
-    setNumPages(numPages);
-  };
+  const onLoadSuccess = ({ numPages }: { numPages: number }) => setNumPages(numPages);
 
   const scrollToPage = (pageNum: number) => {
     if (pageNum >= 1 && pageNum <= numPages) {
-      rowVirtualizer.scrollToIndex(pageNum - 1, {
-        align: "start",
-        behavior: "smooth",
-      });
+      rowVirtualizer.scrollToIndex(pageNum - 1, { align: "start", behavior: "smooth" });
     }
   };
 
@@ -111,25 +99,11 @@ export const PDFViewer = ({
       {/* Toolbar */}
       <div className="flex items-center justify-between gap-4 border-b bg-background p-4">
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => scrollToPage(Math.max(1, currentPage - 1))}
-            disabled={currentPage <= 1}
-            aria-label="Previous page"
-          >
+          <Button variant="outline" size="icon" onClick={() => scrollToPage(Math.max(1, currentPage - 1))} disabled={currentPage <= 1} aria-label="Previous page">
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="whitespace-nowrap text-sm">
-            Page {currentPage} of {numPages || "…"}
-          </span>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => scrollToPage(Math.min(numPages, currentPage + 1))}
-            disabled={!numPages || currentPage >= numPages}
-            aria-label="Next page"
-          >
+          <span className="whitespace-nowrap text-sm">Page {currentPage} of {numPages || "…"}</span>
+          <Button variant="outline" size="icon" onClick={() => scrollToPage(Math.min(numPages, currentPage + 1))} disabled={!numPages || currentPage >= numPages} aria-label="Next page">
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
@@ -163,92 +137,66 @@ export const PDFViewer = ({
       </div>
 
       {/* Virtualized scroll container */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-auto bg-muted/30 py-6"
-        role="region"
-        aria-label="PDF document viewer"
-      >
+      <div ref={scrollRef} className="flex-1 overflow-auto bg-muted/30 py-6" role="region" aria-label="PDF document viewer">
         <div className="w-full">
           <div className="flex justify-center" style={{ padding: 0 }}>
-          <ErrorBoundary
-            resetKeys={[pdfUrl]}
-            fallback={
-              <div className="flex h-96 items-center justify-center">
-                <div className="flex flex-col items-center gap-4 text-center">
-                  <AlertCircle className="h-12 w-12 text-destructive" />
-                  <div className="space-y-2">
-                    <h3 className="text-lg font-semibold text-foreground">PDF Viewer Error</h3>
-                    <p className="text-sm text-muted-foreground max-w-md">
-                      The PDF viewer encountered an error. Please refresh the page or try again later.
-                    </p>
+            <ErrorBoundary
+              resetKeys={[pdfUrl]}
+              fallback={
+                <div className="flex h-96 items-center justify-center">
+                  <div className="flex flex-col items-center gap-4 text-center">
+                    <AlertCircle className="h-12 w-12 text-destructive" />
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-semibold text-foreground">PDF Viewer Error</h3>
+                      <p className="text-sm text-muted-foreground max-w-md">The PDF viewer encountered an error. Please refresh the page or try again later.</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            }
-            onError={(error) => console.error('PDF Viewer Error:', error)}
-          >
-            <Document
-              file={pdfUrl}
-              onLoadSuccess={onLoadSuccess}
-              loading={
-                <div className="flex h-96 items-center justify-center">
-                  <div className="text-muted-foreground">Loading PDF…</div>
-                </div>
               }
-              error={
-                <div className="flex h-96 items-center justify-center">
-                  <div className="text-destructive">Failed to load PDF</div>
-                </div>
-              }
+              onError={(error) => console.error("PDF Viewer Error:", error)}
             >
-              {/* Virtual container with total height */}
-              <div
-                style={{
-                  height: `${rowVirtualizer.getTotalSize()}px`,
-                  width: '100%',
-                  position: 'relative',
-                }}
+              <Document
+                file={pdfUrl}
+                onLoadSuccess={onLoadSuccess}
+                loading={<div className="flex h-96 items-center justify-center"><div className="text-muted-foreground">Loading PDF…</div></div>}
+                error={<div className="flex h-96 items-center justify-center"><div className="text-destructive">Failed to load PDF</div></div>}
               >
-                {/* Only render visible pages */}
-                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-                  const pageNumber = virtualRow.index + 1;
-                  return (
-                    <div
-                      key={virtualRow.key}
-                      data-index={virtualRow.index}
-                      ref={rowVirtualizer.measureElement}
-                      style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: '50%',
-                        transform: `translate(-50%, ${virtualRow.start}px)`,
-                      }}
-                      className="mb-6"
-                    >
-                      <div className="rounded bg-white shadow">
-                        <Page
-                          pageNumber={pageNumber}
-                          scale={scale}
-                          renderTextLayer
-                          renderAnnotationLayer
-                          className="bg-white"
-                          onLoadSuccess={(page) => {
-                            // Cache the actual page height for better estimates
-                            const height = page.height * scale;
-                            setPageHeights((prev) => ({
-                              ...prev,
-                              [pageNumber]: height,
-                            }));
-                          }}
-                        />
+                {/* Virtual container */}
+                <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}>
+                  {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                    const pageNumber = virtualRow.index + 1;
+                    return (
+                      <div
+                        key={virtualRow.key}
+                        data-index={virtualRow.index}
+                        ref={rowVirtualizer.measureElement}
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: "50%",                                   // center anchor
+                          transform: `translate(-50%, ${virtualRow.start}px)`, // center row
+                        }}
+                        className="mb-6"
+                      >
+                        <div className="rounded bg-white shadow">
+                          <Page
+                            pageNumber={pageNumber}
+                            scale={scale}
+                            renderTextLayer={false}         // disable heavy layers by default
+                            renderAnnotationLayer={false}
+                            className="bg-white"
+                            onLoadSuccess={(page) => {
+                              const height = page.height * scale;
+                              setPageHeights((prev) => ({ ...prev, [pageNumber]: height }));
+                            }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </Document>
-          </ErrorBoundary>
+                    );
+                  })}
+                </div>
+              </Document>
+            </ErrorBoundary>
           </div>
         </div>
       </div>
