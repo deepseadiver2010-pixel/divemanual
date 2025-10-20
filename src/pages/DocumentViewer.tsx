@@ -981,42 +981,44 @@ export default function DocumentViewer() {
         </CardHeader>
 
         {/* Content Area with TOC Sidebar or Drawer */}
-        <CardContent className="flex-1 p-0 overflow-hidden flex">
+        <CardContent className="flex gap-4 p-0">
           {/* Desktop: Collapsible Sidebar */}
           {!isMobile && isTOCOpen && (
-            <div 
+            <aside 
               id="toc-panel"
               ref={tocRef}
-              className="w-80 lg:w-96 border-r bg-card flex flex-col animate-slide-in-left"
+              className="shrink-0 w-80 lg:w-96 border-r bg-card flex flex-col animate-slide-in-left"
               role="navigation"
               aria-label="Table of Contents"
             >
               <TOCContent />
-            </div>
+            </aside>
           )}
 
           {/* PDF Viewer Area - Expands when TOC is closed */}
-          <div className="flex-1 overflow-hidden">
-            {checkingPdf ? (
-              <div className="h-full flex items-center justify-center text-muted-foreground">
-                Checking for manual PDF...
-              </div>
-            ) : pdfUrl ? (
-              <PDFViewer 
-                pdfUrl={pdfUrl}
-                targetPage={targetPage}
-                targetParagraph={targetParagraph}
-                onPageChange={handlePageChange}
-              />
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
-                <div className="text-lg font-medium">Manual PDF not found</div>
-                <div className="text-sm text-muted-foreground max-w-xl">
-                  We couldn't locate the Navy Diving Manual. Upload <strong>navy-diving-manual.pdf</strong> to the Storage bucket <strong>manuals</strong> or place it at <code>/public/navy-diving-manual.pdf</code>.
+          <section className="flex-1 min-w-0 flex justify-center">
+            <div className="w-full max-w-[1100px]">
+              {checkingPdf ? (
+                <div className="h-full flex items-center justify-center text-muted-foreground">
+                  Checking for manual PDF...
                 </div>
-              </div>
-            )}
-          </div>
+              ) : pdfUrl ? (
+                <PDFViewer 
+                  pdfUrl={pdfUrl}
+                  targetPage={targetPage}
+                  targetParagraph={targetParagraph}
+                  onPageChange={handlePageChange}
+                />
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center gap-3 text-center p-6">
+                  <div className="text-lg font-medium">Manual PDF not found</div>
+                  <div className="text-sm text-muted-foreground max-w-xl">
+                    We couldn't locate the Navy Diving Manual. Upload <strong>navy-diving-manual.pdf</strong> to the Storage bucket <strong>manuals</strong> or place it at <code>/public/navy-diving-manual.pdf</code>.
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
         </CardContent>
       </Card>
 
