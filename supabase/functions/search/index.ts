@@ -31,16 +31,16 @@ serve(async (req) => {
     let totalCount = 0;
 
     if (searchType === 'semantic') {
-      // Generate embedding for semantic search
-      const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-      if (!LOVABLE_API_KEY) {
-        throw new Error('LOVABLE_API_KEY not configured');
+      // Generate embedding for semantic search using OpenAI
+      const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
+      if (!OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY not configured');
       }
 
-      const embeddingResponse = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
+      const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -50,7 +50,9 @@ serve(async (req) => {
       });
 
       if (!embeddingResponse.ok) {
-        throw new Error(`Failed to generate embedding: ${embeddingResponse.status}`);
+        const errorText = await embeddingResponse.text();
+        console.error('OpenAI embeddings error:', embeddingResponse.status, errorText);
+        throw new Error(`Failed to generate embedding: ${embeddingResponse.status} - ${errorText}`);
       }
 
       const embeddingData = await embeddingResponse.json();

@@ -122,7 +122,12 @@ export const ChatWidget = () => {
         throw new Error(error.message || 'Failed to get response');
       }
 
-      if (data.error) {
+      // Check for structured errors from the function
+      if (data?.errorType === 'embedding_error') {
+        throw new Error('embedding_error: ' + (data.error || 'OpenAI embeddings failed'));
+      }
+
+      if (data?.error) {
         throw new Error(data.error);
       }
 
@@ -146,6 +151,7 @@ export const ChatWidget = () => {
       
       // Show appropriate error message
       let errorMessage = 'I apologize, but I encountered an error. Please try again.';
+      let toastTitle = 'Chat Error';
       
       if (error instanceof Error) {
         if (error.message.includes('Rate limits exceeded')) {
@@ -154,6 +160,9 @@ export const ChatWidget = () => {
           errorMessage = 'There\'s an issue with the AI service. Please contact support.';
         } else if (error.message.includes('Unauthorized')) {
           errorMessage = 'Please sign in to use the AI assistant.';
+        } else if (error.message.includes('embedding_error')) {
+          toastTitle = 'OpenAI API Error';
+          errorMessage = 'Failed to process your question. Please verify your OpenAI API key is valid and has sufficient credits.';
         }
       }
 
@@ -167,7 +176,7 @@ export const ChatWidget = () => {
       setMessages(prev => [...prev, errorAiMessage]);
       
       toast({
-        title: "Chat Error",
+        title: toastTitle,
         description: errorMessage,
         variant: "destructive"
       });

@@ -16,7 +16,7 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     // Verify admin role
@@ -144,7 +144,7 @@ serve(async (req) => {
       const embeddings = await Promise.all(
         batch.map(async (chunk) => {
           try {
-            return await generateEmbedding(chunk.content, lovableApiKey);
+            return await generateEmbedding(chunk.content, openaiApiKey);
           } catch (error) {
             console.error(`Failed to generate embedding for chunk ${i}:`, error);
             failedEmbeddings++;
@@ -283,7 +283,7 @@ function chunkText(
 }
 
 async function generateEmbedding(text: string, apiKey: string): Promise<number[]> {
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/embeddings', {
+  const response = await fetch('https://api.openai.com/v1/embeddings', {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -296,17 +296,17 @@ async function generateEmbedding(text: string, apiKey: string): Promise<number[]
   });
 
   if (!response.ok) {
-    const error = await response.text();
-    console.error('Embedding API error:', response.status, error);
+    const errorText = await response.text();
+    console.error('OpenAI embeddings error:', response.status, errorText);
     
     if (response.status === 429) {
       throw new Error('Rate limit exceeded. Please try again later.');
     }
-    if (response.status === 402) {
-      throw new Error('Payment required. Please add credits to your Lovable AI workspace.');
+    if (response.status === 401) {
+      throw new Error('Invalid OpenAI API key. Please update your credentials.');
     }
     
-    throw new Error(`Failed to generate embedding: ${response.status}`);
+    throw new Error(`Failed to generate embedding: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
