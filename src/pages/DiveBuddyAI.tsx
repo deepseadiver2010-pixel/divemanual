@@ -48,16 +48,86 @@ export default function DiveBuddyAI() {
     loadSessions();
   }, []);
 
+  // Realtime subscription for conversation list updates
+  useEffect(() => {
+    let channel: any;
+
+    const setupRealtimeForConversations = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      channel = supabase
+        .channel('conversations-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'conversations',
+            filter: `user_id=eq.${user.id}`,
+          },
+          () => {
+            loadSessions();
+          }
+        )
+        .subscribe();
+    };
+
+    setupRealtimeForConversations();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, []);
+
   useEffect(() => {
     if (currentSessionId) {
       loadMessages(currentSessionId);
     }
   }, [currentSessionId]);
 
+  // Realtime subscription for messages
+  useEffect(() => {
+    if (!currentSessionId) return;
+
+    const channel = supabase
+      .channel(`messages-${currentSessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+          filter: `conversation_id=eq.${currentSessionId}`,
+        },
+        (payload) => {
+          const newMessage = payload.new as any;
+          const typedMessage: Message = {
+            role: newMessage.role as 'user' | 'assistant',
+            content: newMessage.content,
+            citations: newMessage.sources as any,
+          };
+
+          setMessages((prev) => {
+            if (prev.some(m => m.content === typedMessage.content && m.role === typedMessage.role)) {
+              return prev;
+            }
+            return [...prev, typedMessage];
+          });
+          scrollToBottom();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentSessionId]);
+
   const loadSessions = async () => {
     try {
       const { data, error } = await supabase
-        .from("chat_sessions")
+        .from("conversations")
         .select("*")
         .order("updated_at", { ascending: false });
 
@@ -84,7 +154,7 @@ export default function DiveBuddyAI() {
       const { data, error } = await supabase
         .from("chat_messages")
         .select("*")
-        .eq("session_id", sessionId)
+        .eq("conversation_id", sessionId)
         .order("created_at", { ascending: true });
 
       if (error) throw error;
@@ -92,7 +162,7 @@ export default function DiveBuddyAI() {
       const formattedMessages: Message[] = (data || []).map((msg) => ({
         role: msg.role as "user" | "assistant",
         content: msg.content,
-        citations: msg.citations as any,
+        citations: msg.sources as any,
       }));
 
       setMessages(formattedMessages);
@@ -112,7 +182,7 @@ export default function DiveBuddyAI() {
       if (!user) throw new Error("Not authenticated");
 
       const { data, error } = await supabase
-        .from("chat_sessions")
+        .from("conversations")
         .insert({
           user_id: user.id,
           title: "New Chat",
@@ -138,6 +208,9 @@ export default function DiveBuddyAI() {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
+    const messageContent = input;
+    setInput("");
+
     let sessionId = currentSessionId;
 
     // Create a new session if none exists
@@ -147,10 +220,10 @@ export default function DiveBuddyAI() {
         if (!user) throw new Error("Not authenticated");
 
         const { data, error } = await supabase
-          .from("chat_sessions")
+          .from("conversations")
           .insert({
             user_id: user.id,
-            title: input.substring(0, 50) + (input.length > 50 ? "..." : ""),
+            title: messageContent.substring(0, 50) + (messageContent.length > 50 ? "..." : ""),
           })
           .select()
           .single();
@@ -170,15 +243,15 @@ export default function DiveBuddyAI() {
       }
     }
 
-    const userMessage: Message = { role: "user", content: input };
+    // Optimistic UI update
+    const userMessage: Message = { role: "user", content: messageContent };
     setMessages((prev) => [...prev, userMessage]);
-    setInput("");
     setIsLoading(true);
 
     try {
       const { data, error } = await supabase.functions.invoke("chat", {
         body: {
-          message: input,
+          message: messageContent,
           sessionId: sessionId,
         },
       });
@@ -194,23 +267,28 @@ export default function DiveBuddyAI() {
         throw error;
       }
 
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: data.response,
-        citations: data.citations || [],
-      };
+      // Assistant message will arrive via realtime
+      // If not received via realtime, add manually as fallback
+      if (!data.error && data.response) {
+        const assistantMessage: Message = {
+          role: "assistant",
+          content: data.response,
+          citations: data.citations || [],
+        };
+        
+        setTimeout(() => {
+          setMessages((prev) => {
+            if (prev.some(m => m.content === assistantMessage.content && m.role === 'assistant')) {
+              return prev;
+            }
+            return [...prev, assistantMessage];
+          });
+        }, 500);
+      }
 
-      setMessages((prev) => [...prev, assistantMessage]);
-
-      // Update session title if this was the first message
+      // Reload sessions to get updated title (auto-generated by backend)
       if (messages.length === 0) {
-        await supabase
-          .from("chat_sessions")
-          .update({
-            title: input.substring(0, 50) + (input.length > 50 ? "..." : ""),
-          })
-          .eq("id", sessionId);
-        loadSessions();
+        setTimeout(() => loadSessions(), 1000);
       }
     } catch (error: any) {
       console.error("Error sending message:", error);

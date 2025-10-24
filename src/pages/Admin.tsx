@@ -6,14 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, FileText, CheckCircle, AlertCircle, Upload } from "lucide-react";
+import { Loader2, FileText, CheckCircle, AlertCircle, Upload, Database } from "lucide-react";
 
 export default function Admin() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState("");
   const [result, setResult] = useState<any>(null);
+  const [initResult, setInitResult] = useState<any>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [bucketName, setBucketName] = useState("manuals");
   const [uploadedPath, setUploadedPath] = useState<string | null>(null);
@@ -121,12 +123,105 @@ export default function Admin() {
     }
   };
 
+  const handleInitIndex = async () => {
+    setIsInitializing(true);
+    setStatus("Initializing dive manual index...");
+    setInitResult(null);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('init-dive-index');
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setInitResult(data);
+      setStatus(data.message || "Initialization complete!");
+      
+      toast({
+        title: "Success!",
+        description: data.seeded 
+          ? `Dive manual indexed: ${data.chunks} chunks created`
+          : "Index already exists - no changes needed",
+      });
+    } catch (error: any) {
+      console.error('Init error:', error);
+      setStatus("Error initializing index");
+      toast({
+        title: "Error",
+        description: error.message || "Failed to initialize index",
+        variant: "destructive",
+      });
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+
   return (
-    <div className="container mx-auto p-6 max-w-4xl">
+    <div className="container mx-auto p-6 max-w-4xl space-y-6">
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2">Admin Dashboard</h1>
         <p className="text-muted-foreground">Manage Navy Diving Manual data processing</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Database className="h-5 w-5" />
+            Auto-Initialize Index
+          </CardTitle>
+          <CardDescription>
+            Automatically download and process the Navy Diving Manual from the configured URL.
+            This will populate the database with searchable chunks and embeddings.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <Button
+            onClick={handleInitIndex}
+            disabled={isInitializing}
+            size="lg"
+            className="w-full"
+          >
+            {isInitializing ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Initializing...
+              </>
+            ) : (
+              <>
+                <Database className="mr-2 h-4 w-4" />
+                Initialize Dive Manual Index
+              </>
+            )}
+          </Button>
+
+          {initResult && (
+            <div className="rounded-lg border bg-card p-4 space-y-2">
+              <div className="flex items-center gap-2 text-green-600">
+                <CheckCircle className="h-5 w-5" />
+                <span className="font-semibold">
+                  {initResult.seeded ? "Index Created" : "Already Populated"}
+                </span>
+              </div>
+              <div className="text-sm space-y-1">
+                <p><strong>Chunks:</strong> {initResult.chunks}</p>
+                <p><strong>Message:</strong> {initResult.message}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-muted rounded-lg p-4 text-sm space-y-2">
+            <h4 className="font-semibold">What this does:</h4>
+            <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+              <li>Downloads PDF from DIVE_MANUAL_URL environment variable</li>
+              <li>Extracts text from all pages</li>
+              <li>Chunks text into searchable segments</li>
+              <li>Generates embeddings via OpenAI</li>
+              <li>Stores in database (idempotent - won't duplicate)</li>
+              <li>Typically takes 20-40 minutes for first run</li>
+            </ul>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

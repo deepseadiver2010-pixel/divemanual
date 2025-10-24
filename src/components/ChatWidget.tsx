@@ -15,10 +15,11 @@ interface Message {
   type: 'user' | 'assistant';
   content: string;
   citations?: Array<{
-    volume: string;
-    chapter: string;
-    page: string;
-    text: string;
+    document_title?: string;
+    snippet?: string;
+    page_number?: number;
+    volume?: string;
+    chapter?: string;
   }>;
   timestamp: Date;
 }
@@ -134,7 +135,7 @@ export const ChatWidget = () => {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
         content: data.response,
-        citations: data.citations,
+        citations: data.citations || data.sources,
         timestamp: new Date()
       };
 
@@ -276,21 +277,19 @@ export const ChatWidget = () => {
                       
                       {message.citations && message.citations.length > 0 && (
                         <div className="mt-3 space-y-2">
-                          <p className="text-xs font-medium text-muted-foreground">Citations:</p>
+                          <p className="text-xs font-medium text-muted-foreground">References:</p>
                           {message.citations.map((citation, index) => (
                             <div
                               key={index}
-                              className="flex items-center justify-between p-2 bg-background rounded border border-border"
+                              className="p-2 bg-background rounded border border-border"
                             >
-                              <div>
-                                <p className="text-xs font-medium">{citation.text}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {citation.volume} • {citation.chapter} • {citation.page}
-                                </p>
-                              </div>
-                              <Button size="sm" variant="ghost" className="h-6 w-6 p-0">
-                                <ExternalLink className="w-3 h-3" />
-                              </Button>
+                              <p className="text-xs font-medium mb-1">
+                                {citation.document_title || `${citation.volume} - ${citation.chapter}`}
+                                {citation.page_number && ` (Page ${citation.page_number})`}
+                              </p>
+                              <p className="text-xs text-muted-foreground line-clamp-2">
+                                {citation.snippet}
+                              </p>
                             </div>
                           ))}
                         </div>

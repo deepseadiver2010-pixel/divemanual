@@ -32,7 +32,7 @@ serve(async (req) => {
     
     if (!currentSessionId) {
       const { data: newSession, error: sessionError } = await supabase
-        .from('chat_sessions')
+        .from('conversations')
         .insert({
           user_id: user.id,
           title: message.substring(0, 50) + (message.length > 50 ? '...' : '')
@@ -48,21 +48,25 @@ serve(async (req) => {
     const { error: messageError } = await supabase
       .from('chat_messages')
       .insert({
-        session_id: currentSessionId,
+        conversation_id: currentSessionId,
         role: 'user',
         content: message
       });
       
     if (messageError) throw messageError;
 
-    // Get conversation history for context
+    // Get conversation history (last 10 messages only)
     const { data: messages, error: historyError } = await supabase
       .from('chat_messages')
       .select('role, content')
-      .eq('session_id', currentSessionId)
-      .order('created_at', { ascending: true });
+      .eq('conversation_id', currentSessionId)
+      .order('created_at', { ascending: false })
+      .limit(10);
       
     if (historyError) throw historyError;
+
+    // Reverse to get chronological order
+    const conversationHistory = (messages || []).reverse();
 
     // Get LOVABLE_API_KEY from environment
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -91,9 +95,9 @@ serve(async (req) => {
     const embedding = embeddingData.data[0].embedding;
 
     // Perform semantic search on chunks using RPC
-    const { data: chunks, error: searchError } = await supabase.rpc('match_chunks', {
+    const { data: chunks, error: searchError } = await supabase.rpc('match_dive_chunks', {
       query_embedding: embedding,
-      match_threshold: 0.7,
+      match_threshold: 0.20,
       match_count: 5
     });
       
@@ -101,7 +105,7 @@ serve(async (req) => {
 
     // Build context from retrieved chunks
     const context = chunks?.map((chunk: any) => 
-      `${chunk.volume} - ${chunk.chapter} - Page ${chunk.page_number}:\n${chunk.content}`
+      `${chunk.volume || 'Unknown'} - ${chunk.chapter || 'Unknown'} - Page ${chunk.page_number}:\n${chunk.text}`
     ).join('\n\n') || "";
 
     // Call Lovable AI with RAG context
@@ -123,11 +127,11 @@ ${context}`;
         Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
+        body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          ...messages.map(msg => ({ role: msg.role, content: msg.content }))
+          ...conversationHistory.map(msg => ({ role: msg.role, content: msg.content }))
         ],
         temperature: 0.7,
         max_tokens: 1000,
@@ -137,7 +141,10 @@ ${context}`;
     if (!response.ok) {
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: "Rate limits exceeded, please try again later." }),
+          JSON.stringify({ 
+            error: "Rate limits exceeded, please try again later.",
+            errorType: "rate_limit" 
+          }),
           {
             status: 429,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -146,9 +153,24 @@ ${context}`;
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "Payment required, please add funds to your Lovable AI workspace." }),
+          JSON.stringify({ 
+            error: "Payment required, please add funds to your Lovable AI workspace.",
+            errorType: "payment_required" 
+          }),
           {
             status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
+      if (response.status === 401) {
+        return new Response(
+          JSON.stringify({ 
+            error: "Please sign in again.",
+            errorType: "unauthorized" 
+          }),
+          {
+            status: 401,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           }
         );
@@ -156,31 +178,87 @@ ${context}`;
       
       const errorText = await response.text();
       console.error("AI gateway error:", response.status, errorText);
-      throw new Error("AI gateway error");
+      return new Response(
+        JSON.stringify({ 
+          error: "Something went wrong. Please try again.",
+          errorType: "server_error" 
+        }),
+        {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     const aiData = await response.json();
     const aiResponse = aiData.choices[0].message.content;
 
-    // Extract citations from chunks and format them
+    // Extract citations from chunks and format them (VA app format)
     const citations = chunks?.map((chunk: any) => ({
+      document_id: chunk.document_id,
+      document_title: chunk.document_title || `${chunk.volume} - ${chunk.chapter}`,
+      snippet: chunk.text?.substring(0, 200) || "",
+      section_label: chunk.section_label || null,
+      page_number: chunk.page_number,
       volume: chunk.volume,
-      chapter: chunk.chapter,
-      page: chunk.page_number.toString(),
-      text: chunk.content.substring(0, 100) + "..."
+      chapter: chunk.chapter
     })) || [];
 
     // Save AI response
     const { error: aiMessageError } = await supabase
       .from('chat_messages')
       .insert({
-        session_id: currentSessionId,
+        conversation_id: currentSessionId,
         role: 'assistant',
         content: aiResponse,
-        citations: citations
+        sources: citations
       });
       
     if (aiMessageError) throw aiMessageError;
+
+    // Auto-title generation after first exchange
+    const { count: messageCount } = await supabase
+      .from('chat_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('conversation_id', currentSessionId);
+
+    if (messageCount === 2) {
+      try {
+        const titlePrompt = `Based on this conversation, create a short 3-5 word title:
+User: ${message}
+Assistant: ${aiResponse}
+
+Title (no quotes, no punctuation):`;
+
+        const titleResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [{ role: "user", content: titlePrompt }],
+            temperature: 0.7,
+            max_tokens: 20,
+          }),
+        });
+
+        if (titleResponse.ok) {
+          const titleData = await titleResponse.json();
+          const generatedTitle = titleData.choices[0].message.content.trim();
+          
+          await supabase
+            .from('conversations')
+            .update({ title: generatedTitle })
+            .eq('id', currentSessionId);
+
+          console.log("Auto-generated title:", generatedTitle);
+        }
+      } catch (titleError) {
+        console.error("Title generation error (non-fatal):", titleError);
+      }
+    }
 
     // Log the search for analytics
     await supabase
