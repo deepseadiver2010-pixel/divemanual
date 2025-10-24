@@ -51,38 +51,38 @@ export type Database = {
         Row: {
           citations: Json | null
           content: string
+          conversation_id: string
           created_at: string
           id: string
           role: string
-          session_id: string
         }
         Insert: {
           citations?: Json | null
           content: string
+          conversation_id: string
           created_at?: string
           id?: string
           role: string
-          session_id: string
         }
         Update: {
           citations?: Json | null
           content?: string
+          conversation_id?: string
           created_at?: string
           id?: string
           role?: string
-          session_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "chat_messages_session_id_fkey"
-            columns: ["session_id"]
+            foreignKeyName: "chat_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
             isOneToOne: false
-            referencedRelation: "chat_sessions"
+            referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
         ]
       }
-      chat_sessions: {
+      conversations: {
         Row: {
           created_at: string
           id: string
@@ -106,45 +106,57 @@ export type Database = {
         }
         Relationships: []
       }
-      chunks: {
+      document_chunks: {
         Row: {
           chapter: string | null
-          content: string
+          content_hash: string | null
           created_at: string
           document_id: string
           embedding: string | null
           id: string
+          metadata: Json | null
           page_id: string | null
           page_number: number | null
           section: string | null
+          section_label: string | null
+          seq: number | null
+          text: string
           token_count: number | null
           volume: string | null
           warning_flags: string[] | null
         }
         Insert: {
           chapter?: string | null
-          content: string
+          content_hash?: string | null
           created_at?: string
           document_id: string
           embedding?: string | null
           id?: string
+          metadata?: Json | null
           page_id?: string | null
           page_number?: number | null
           section?: string | null
+          section_label?: string | null
+          seq?: number | null
+          text: string
           token_count?: number | null
           volume?: string | null
           warning_flags?: string[] | null
         }
         Update: {
           chapter?: string | null
-          content?: string
+          content_hash?: string | null
           created_at?: string
           document_id?: string
           embedding?: string | null
           id?: string
+          metadata?: Json | null
           page_id?: string | null
           page_number?: number | null
           section?: string | null
+          section_label?: string | null
+          seq?: number | null
+          text?: string
           token_count?: number | null
           volume?: string | null
           warning_flags?: string[] | null
@@ -261,7 +273,7 @@ export type Database = {
           event_data: Json | null
           event_type: string
           id: string
-          ip_address: unknown | null
+          ip_address: unknown
           session_id: string | null
           user_agent: string | null
           user_id: string | null
@@ -271,7 +283,7 @@ export type Database = {
           event_data?: Json | null
           event_type: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           session_id?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -281,7 +293,7 @@ export type Database = {
           event_data?: Json | null
           event_type?: string
           id?: string
-          ip_address?: unknown | null
+          ip_address?: unknown
           session_id?: string | null
           user_agent?: string | null
           user_id?: string | null
@@ -465,68 +477,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      binary_quantize: {
-        Args: { "": string } | { "": unknown }
-        Returns: unknown
-      }
-      halfvec_avg: {
-        Args: { "": number[] }
-        Returns: unknown
-      }
-      halfvec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      halfvec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      halfvec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
         Returns: boolean
-      }
-      hnsw_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_sparsevec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnswhandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflat_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflat_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflathandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      l2_norm: {
-        Args: { "": unknown } | { "": unknown }
-        Returns: number
-      }
-      l2_normalize: {
-        Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: unknown
       }
       match_chunks: {
         Args: {
@@ -548,6 +504,23 @@ export type Database = {
           warning_flags: string[]
         }[]
       }
+      match_dive_chunks: {
+        Args: {
+          match_count?: number
+          match_threshold?: number
+          query_embedding: string
+        }
+        Returns: {
+          chapter: string
+          document_id: string
+          document_title: string
+          page_number: number
+          section_label: string
+          similarity: number
+          text: string
+          volume: string
+        }[]
+      }
       search_chunks_fulltext: {
         Args: {
           match_count?: number
@@ -566,42 +539,6 @@ export type Database = {
           volume: string
           warning_flags: string[]
         }[]
-      }
-      sparsevec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      sparsevec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      sparsevec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
-      vector_avg: {
-        Args: { "": number[] }
-        Returns: string
-      }
-      vector_dims: {
-        Args: { "": string } | { "": unknown }
-        Returns: number
-      }
-      vector_norm: {
-        Args: { "": string }
-        Returns: number
-      }
-      vector_out: {
-        Args: { "": string }
-        Returns: unknown
-      }
-      vector_send: {
-        Args: { "": string }
-        Returns: string
-      }
-      vector_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
       }
     }
     Enums: {
