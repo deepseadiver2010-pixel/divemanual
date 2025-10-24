@@ -17,7 +17,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify admin role
+    // Dual authentication: service role (internal) OR admin user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
@@ -27,25 +27,36 @@ serve(async (req) => {
     }
 
     const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-    
-    if (userError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      });
-    }
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    const { data: roleCheck } = await supabase.rpc('has_role', {
-      _user_id: user.id,
-      _role: 'admin'
-    });
+    // Check 1: Is this an internal call from init-dive-index?
+    if (token === serviceRoleKey) {
+      console.log("✓ Authenticated via service role (internal call)");
+      // Allow - this is init-dive-index calling us
+    } else {
+      // Check 2: Is this an admin user?
+      const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+      
+      if (userError || !user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized: Invalid token' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
 
-    if (!roleCheck) {
-      return new Response(JSON.stringify({ error: 'Forbidden: Admin access required' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      const { data: roleCheck } = await supabase.rpc('has_role', {
+        _user_id: user.id,
+        _role: 'admin'
       });
+
+      if (!roleCheck) {
+        return new Response(JSON.stringify({ error: 'Forbidden: Admin access required' }), {
+          status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      
+      console.log("✓ Authenticated as admin user:", user.email);
     }
 
     console.log("Starting Navy Diving Manual ingestion...");
