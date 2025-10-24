@@ -105,7 +105,7 @@ export default function DiveBuddyAI() {
           const typedMessage: Message = {
             role: newMessage.role as 'user' | 'assistant',
             content: newMessage.content,
-            citations: newMessage.sources as any,
+            citations: newMessage.citations as any,
           };
 
           setMessages((prev) => {
@@ -162,7 +162,7 @@ export default function DiveBuddyAI() {
       const formattedMessages: Message[] = (data || []).map((msg) => ({
         role: msg.role as "user" | "assistant",
         content: msg.content,
-        citations: msg.sources as any,
+        citations: msg.citations as any,
       }));
 
       setMessages(formattedMessages);

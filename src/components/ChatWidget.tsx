@@ -135,7 +135,7 @@ export const ChatWidget = () => {
         id: (Date.now() + 1).toString(),
         type: 'assistant',
         content: data.response,
-        citations: data.citations || data.sources,
+        citations: data.citations,
         timestamp: new Date()
       };
 

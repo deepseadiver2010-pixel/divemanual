@@ -34,11 +34,15 @@ serve(async (req) => {
     const pdfBuffer = await pdfResponse.arrayBuffer();
     console.log(`Downloaded PDF: ${pdfBuffer.byteLength} bytes`);
 
-    // Import pdf.js
-    const pdfjsLib = await import("https://esm.sh/pdfjs-dist@4.10.38");
+    // Import pdf.js with proper configuration for Deno
+    const pdfjsLib = await import("https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/+esm");
     
     // Parse PDF
-    const loadingTask = pdfjsLib.getDocument({ data: pdfBuffer });
+    const loadingTask = pdfjsLib.getDocument({ 
+      data: new Uint8Array(pdfBuffer),
+      useSystemFonts: true,
+      standardFontDataUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/standard_fonts/"
+    });
     const pdfDoc = await loadingTask.promise;
     console.log(`PDF loaded: ${pdfDoc.numPages} pages`);
 
@@ -264,12 +268,8 @@ function chunkText(pageTexts: Array<{ pageNum: number; text: string }>) {
       if (currentChunk.length >= TARGET_CHUNK_SIZE) {
         const chunkText = currentChunk.trim();
         
-        // Generate hash for idempotency
-        const encoder = new TextEncoder();
-        const data = encoder.encode(chunkText);
-        const hashBuffer = crypto.subtle.digestSync("SHA-256", data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+        // Generate hash for idempotency (simple hash using JSON)
+        const hashHex = btoa(chunkText).substring(0, 32);
 
         chunks.push({
           seq: chunks.length + 1,
@@ -291,11 +291,7 @@ function chunkText(pageTexts: Array<{ pageNum: number; text: string }>) {
   // Save remaining chunk
   if (currentChunk.trim().length > 0) {
     const chunkText = currentChunk.trim();
-    const encoder = new TextEncoder();
-    const data = encoder.encode(chunkText);
-    const hashBuffer = crypto.subtle.digestSync("SHA-256", data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    const hashHex = btoa(chunkText).substring(0, 32);
 
     chunks.push({
       seq: chunks.length + 1,

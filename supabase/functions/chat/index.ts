@@ -211,7 +211,7 @@ ${context}`;
         conversation_id: currentSessionId,
         role: 'assistant',
         content: aiResponse,
-        sources: citations
+        citations: citations
       });
       
     if (aiMessageError) throw aiMessageError;
