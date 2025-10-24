@@ -1,10 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { supabase } from "../_shared/supabase.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -13,6 +16,9 @@ serve(async (req) => {
 
   try {
     console.log("Checking if dive manual index needs initialization...");
+
+    // Create supabase client with service role
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check if chunks exist
     const { count, error: countError } = await supabase
@@ -44,6 +50,9 @@ serve(async (req) => {
 
     const ingestResponse = await supabase.functions.invoke("ingest-dive-manual", {
       body: {},
+      headers: {
+        Authorization: `Bearer ${supabaseServiceKey}`
+      }
     });
 
     if (ingestResponse.error) {
