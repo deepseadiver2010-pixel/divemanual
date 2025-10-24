@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { useIndexInitializer } from './useIndexInitializer';
 
 interface AuthContextType {
   user: User | null;
@@ -27,6 +28,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Initialize dive manual index in background on app startup
+  useIndexInitializer();
 
   useEffect(() => {
     // Set up auth state listener FIRST

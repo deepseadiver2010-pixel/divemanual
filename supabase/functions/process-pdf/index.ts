@@ -114,7 +114,8 @@ serve(async (req) => {
           file_url: `${bucketName}/${filePath}`,
           total_pages: numPages,
           is_published: true,
-          published_at: new Date().toISOString()
+          published_at: new Date().toISOString(),
+          uploaded_by: user.id
         })
         .select('id')
         .single();
@@ -125,7 +126,7 @@ serve(async (req) => {
     }
 
     // Clear existing chunks for this document
-    await supabase.from('chunks').delete().eq('document_id', documentId);
+    await supabase.from('document_chunks').delete().eq('document_id', documentId);
     console.log('Cleared existing chunks');
 
     // Process text into chunks
@@ -144,7 +145,7 @@ serve(async (req) => {
       const embeddings = await Promise.all(
         batch.map(async (chunk) => {
           try {
-            return await generateEmbedding(chunk.content, openaiApiKey);
+            return await generateEmbedding(chunk.text, openaiApiKey);
           } catch (error) {
             console.error(`Failed to generate embedding for chunk ${i}:`, error);
             failedEmbeddings++;
@@ -161,7 +162,7 @@ serve(async (req) => {
 
       // Insert batch
       const { error: insertError } = await supabase
-        .from('chunks')
+        .from('document_chunks')
         .insert(chunksWithEmbeddings);
 
       if (insertError) {
@@ -251,10 +252,10 @@ function chunkText(
     if (currentChunk.length > 2000) {
       chunks.push({
         document_id: documentId,
-        content: currentChunk.trim(),
+        text: currentChunk.trim(),
         volume: currentVolume,
         chapter: currentChapter,
-        section: currentSection || null,
+        section_label: currentSection || null,
         page_number: pageNumber,
         warning_flags: warningFlags.length > 0 ? warningFlags : null,
         token_count: Math.ceil(currentChunk.length / 4)
@@ -269,10 +270,10 @@ function chunkText(
   if (currentChunk.trim()) {
     chunks.push({
       document_id: documentId,
-      content: currentChunk.trim(),
+      text: currentChunk.trim(),
       volume: currentVolume,
       chapter: currentChapter,
-      section: currentSection || null,
+      section_label: currentSection || null,
       page_number: pageNumber,
       warning_flags: warningFlags.length > 0 ? warningFlags : null,
       token_count: Math.ceil(currentChunk.length / 4)
