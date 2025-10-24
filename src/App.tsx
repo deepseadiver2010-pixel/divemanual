@@ -14,6 +14,7 @@ import NotFound from "./pages/NotFound";
 import Layout from "./components/Layout";
 import { AuthProvider } from "./hooks/useAuth";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
 
 const queryClient = new QueryClient();
 
@@ -33,8 +34,11 @@ export default function App() {
                 <Route path="/dive-buddy" element={<DiveBuddyAI />} />
                 <Route path="/search" element={<Search />} />
                 <Route path="/flashcards" element={<Flashcards />} />
-                <Route path="/admin" element={<Admin />} />
                 <Route path="*" element={<NotFound />} />
+              </Route>
+              
+              <Route element={<AdminRoute />}>
+                <Route path="/admin" element={<Admin />} />
               </Route>
               </Route>
             </Routes>

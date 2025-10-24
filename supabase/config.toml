@@ -10,7 +10,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.ingest-dive-manual]
-verify_jwt = false
+verify_jwt = true
 
 [functions.init-dive-index]
 verify_jwt = false
