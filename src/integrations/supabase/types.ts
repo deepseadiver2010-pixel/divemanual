@@ -232,7 +232,7 @@ export type Database = {
           title: string
           total_pages: number | null
           updated_at: string
-          uploaded_by: string
+          uploaded_by: string | null
           version: string
         }
         Insert: {
@@ -247,7 +247,7 @@ export type Database = {
           title: string
           total_pages?: number | null
           updated_at?: string
-          uploaded_by: string
+          uploaded_by?: string | null
           version: string
         }
         Update: {
@@ -262,7 +262,7 @@ export type Database = {
           title?: string
           total_pages?: number | null
           updated_at?: string
-          uploaded_by?: string
+          uploaded_by?: string | null
           version?: string
         }
         Relationships: []

@@ -273,6 +273,17 @@ serve(async (req) => {
   }
 });
 
+// Unicode-safe, deterministic hash for idempotency (FNV-1a 32-bit over UTF-8)
+function hashText(input: string): string {
+  const bytes = new TextEncoder().encode(input);
+  let h = 0x811c9dc5 >>> 0;
+  for (let i = 0; i < bytes.length; i++) {
+    h ^= bytes[i];
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return ("00000000" + h.toString(16)).slice(-8);
+}
+
 function chunkText(pageTexts: Array<{ pageNum: number; text: string }>) {
   const chunks: Array<{
     seq: number;
@@ -321,8 +332,8 @@ function chunkText(pageTexts: Array<{ pageNum: number; text: string }>) {
       if (currentChunk.length >= TARGET_CHUNK_SIZE) {
         const chunkText = currentChunk.trim();
         
-        // Generate hash for idempotency (simple hash using JSON)
-        const hashHex = btoa(chunkText).substring(0, 32);
+        // Generate hash for idempotency (Unicode-safe)
+        const hashHex = hashText(chunkText);
 
         chunks.push({
           seq: chunks.length + 1,
@@ -344,7 +355,7 @@ function chunkText(pageTexts: Array<{ pageNum: number; text: string }>) {
   // Save remaining chunk
   if (currentChunk.trim().length > 0) {
     const chunkText = currentChunk.trim();
-    const hashHex = btoa(chunkText).substring(0, 32);
+    const hashHex = hashText(chunkText);
 
     chunks.push({
       seq: chunks.length + 1,
