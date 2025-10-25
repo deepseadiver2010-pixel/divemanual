@@ -81,27 +81,29 @@ serve(async (req) => {
     const pdfBuffer = await pdfResponse.arrayBuffer();
     console.log(`Downloaded PDF: ${pdfBuffer.byteLength} bytes`);
 
-    // Import pdf.js with proper configuration for Deno
-    const pdfjsLib = await import("https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/+esm");
-    
-    // Configure the worker for Deno environment
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 
-      "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
-    
-    // Parse PDF
-    const loadingTask = pdfjsLib.getDocument({ 
+    // Use serverless PDF.js build to avoid workers in edge runtime
+    const { getDocument } = await import("https://esm.sh/pdfjs-serverless@0.3.2");
+
+    // Parse PDF without web workers
+    const loadingTask = getDocument({
       data: new Uint8Array(pdfBuffer),
-      useSystemFonts: true,
       standardFontDataUrl: "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/standard_fonts/"
     });
     const pdfDoc = await loadingTask.promise;
     console.log(`PDF loaded: ${pdfDoc.numPages} pages`);
 
-    // Extract text from all pages
+    // Determine page range (optional startPage/endPage in request body)
+    let reqBody: any = {};
+    try { reqBody = await req.json(); } catch {}
+    const start = Math.max(1, Math.min(pdfDoc.numPages, Number(reqBody?.startPage) || 1));
+    const end = Math.max(start, Math.min(pdfDoc.numPages, Number(reqBody?.endPage) || pdfDoc.numPages));
+    console.log(`Extracting pages ${start}-${end} of ${pdfDoc.numPages}`);
+
+    // Extract text from selected pages
     let fullText = "";
     const pageTexts: Array<{ pageNum: number; text: string }> = [];
     
-    for (let i = 1; i <= pdfDoc.numPages; i++) {
+    for (let i = start; i <= end; i++) {
       const page = await pdfDoc.getPage(i);
       const textContent = await page.getTextContent();
       const pageText = textContent.items
