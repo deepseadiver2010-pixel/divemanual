@@ -84,6 +84,10 @@ serve(async (req) => {
     // Import pdf.js with proper configuration for Deno
     const pdfjsLib = await import("https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/+esm");
     
+    // Configure the worker for Deno environment
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 
+      "https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.min.mjs";
+    
     // Parse PDF
     const loadingTask = pdfjsLib.getDocument({ 
       data: new Uint8Array(pdfBuffer),
