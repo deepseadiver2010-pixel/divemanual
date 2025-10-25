@@ -45,31 +45,55 @@ serve(async (req) => {
       );
     }
 
-    // No chunks exist, trigger ingestion
-    console.log("No chunks found, triggering ingestion...");
+    // No chunks exist, trigger batch ingestion
+    console.log("No chunks found, triggering batch ingestion...");
 
-    const ingestResponse = await supabase.functions.invoke("ingest-dive-manual", {
-      body: {},
-      headers: {
-        Authorization: `Bearer ${supabaseServiceKey}`
-      }
-    });
-
-    if (ingestResponse.error) {
-      console.error("Ingestion error:", ingestResponse.error);
-      throw new Error(`Ingestion failed: ${ingestResponse.error.message}`);
+    const TOTAL_PAGES = 991; // Navy Diving Manual Rev 7
+    const PAGES_PER_BATCH = 150;
+    const batches: Array<{ start: number; end: number }> = [];
+    
+    for (let start = 1; start <= TOTAL_PAGES; start += PAGES_PER_BATCH) {
+      const end = Math.min(start + PAGES_PER_BATCH - 1, TOTAL_PAGES);
+      batches.push({ start, end });
     }
 
-    const ingestData = ingestResponse.data;
-    console.log("Ingestion complete:", ingestData);
+    console.log(`Processing ${batches.length} batches of ~${PAGES_PER_BATCH} pages each`);
+
+    let totalChunksCreated = 0;
+    let documentId = "";
+
+    for (let i = 0; i < batches.length; i++) {
+      const batch = batches[i];
+      console.log(`Processing batch ${i + 1}/${batches.length}: pages ${batch.start}-${batch.end}`);
+
+      const ingestResponse = await supabase.functions.invoke("ingest-dive-manual", {
+        body: { startPage: batch.start, endPage: batch.end },
+        headers: {
+          Authorization: `Bearer ${supabaseServiceKey}`
+        }
+      });
+
+      if (ingestResponse.error) {
+        console.error(`Batch ${i + 1} error:`, ingestResponse.error);
+        throw new Error(`Batch ${i + 1} failed: ${ingestResponse.error.message}`);
+      }
+
+      const batchData = ingestResponse.data;
+      totalChunksCreated += batchData.chunksCreated || 0;
+      documentId = batchData.documentId || documentId;
+      
+      console.log(`Batch ${i + 1} complete: ${batchData.chunksCreated} chunks created`);
+    }
+
+    console.log(`All batches complete: ${totalChunksCreated} total chunks created`);
 
     return new Response(
       JSON.stringify({
         seeded: true,
-        chunks: ingestData.chunksCreated || 0,
-        totalChunks: ingestData.totalChunks || 0,
-        documentId: ingestData.documentId,
-        message: "Index successfully populated from Navy Diving Manual",
+        chunks: totalChunksCreated,
+        batches: batches.length,
+        documentId: documentId,
+        message: `Index successfully populated from Navy Diving Manual (${batches.length} batches)`,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
