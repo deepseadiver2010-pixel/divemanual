@@ -445,6 +445,33 @@ export type Database = {
           },
         ]
       }
+      manual_chunks: {
+        Row: {
+          chapter: string | null
+          content: string
+          created_at: string | null
+          embedding: string | null
+          id: string
+          page: number | null
+        }
+        Insert: {
+          chapter?: string | null
+          content: string
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          page?: number | null
+        }
+        Update: {
+          chapter?: string | null
+          content?: string
+          created_at?: string | null
+          embedding?: string | null
+          id?: string
+          page?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -540,6 +567,16 @@ export type Database = {
           similarity: number
           text: string
           volume: string
+        }[]
+      }
+      match_manual_chunks: {
+        Args: { match_count?: number; query_embedding: string }
+        Returns: {
+          chapter: string
+          content: string
+          id: string
+          page: number
+          similarity: number
         }[]
       }
       search_chunks_fulltext: {
