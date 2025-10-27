@@ -44,7 +44,6 @@ export default function DiveBuddyAI() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingSessions, setLoadingSessions] = useState(true);
-  const [lastResults, setLastResults] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -293,14 +292,41 @@ export default function DiveBuddyAI() {
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
 
+    // Persist user message to database
+    const { error: userInsertError } = await supabase
+      .from("chat_messages")
+      .insert({
+        conversation_id: sessionId,
+        role: "user",
+        content: messageContent,
+      });
+
+    if (userInsertError) {
+      console.error("Error inserting user message:", userInsertError);
+      toast({
+        title: "Error",
+        description: "Failed to save message",
+        variant: "destructive",
+      });
+      setMessages((prev) => prev.slice(0, -1));
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // Call chat-manual edge function
       const data = await askDiveManual(messageContent);
       
-      // Create assistant message
+      // Create assistant message with citations
       const assistantMessage: Message = {
         role: "assistant",
         content: data.answer,
+        citations: (data.results ?? []).slice(0, 4).map((r: any) => ({
+          page_number: r.page,
+          content: r.content || `id:${r.id}`,
+          chapter: r.chapter,
+          section: r.section,
+        })),
       };
       
       // Persist assistant message to database
@@ -310,7 +336,7 @@ export default function DiveBuddyAI() {
           conversation_id: sessionId,
           role: "assistant",
           content: data.answer,
-          citations: data.results?.slice(0, 4) || [],
+          citations: assistantMessage.citations || [],
         });
 
       if (assistantInsertError) {
@@ -319,7 +345,6 @@ export default function DiveBuddyAI() {
       
       // Update UI state
       setMessages((prev) => [...prev, assistantMessage]);
-      setLastResults(data.results ?? []);
 
       // Reload sessions to get updated title (if first message)
       if (messages.length === 0) {
@@ -461,51 +486,23 @@ export default function DiveBuddyAI() {
                   }`}
                 >
                   <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                  {message.role === "assistant" && (
-                    <>
-                      {/* New citations for latest message */}
-                      {index === messages.length - 1 && Array.isArray(lastResults) && lastResults.length > 0 && (
-                        <div className="mt-4 pt-4 border-t border-border/20">
-                          <p className="text-xs font-semibold mb-2 opacity-80">References:</p>
-                          <div className="flex flex-wrap gap-2">
-                            {lastResults.slice(0, 4).map((r, i) => (
-                              <a
-                                key={r.id || i}
-                                href={`/#p=${r.page ?? 1}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="underline text-xs hover:opacity-70 transition-opacity"
-                              >
-                                [{i + 1}] p.{r.page ?? "?"}
-                              </a>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      
-                      {/* Old citations for historical messages */}
-                      {message.citations && message.citations.length > 0 && index !== messages.length - 1 && (
-                        <div className="mt-4 pt-4 border-t border-border/20">
-                          <p className="text-xs font-semibold mb-2 opacity-80">References:</p>
-                          <div className="space-y-2">
-                            {message.citations.map((citation: any, citIndex: number) => (
-                              <div
-                                key={citIndex}
-                                className="text-xs p-2 rounded bg-background/10 backdrop-blur-sm"
-                              >
-                                <div className="font-medium mb-1">
-                                  {citation.volume && `Vol ${citation.volume}`}
-                                  {citation.chapter && ` - Ch ${citation.chapter}`}
-                                  {citation.section && ` - Sec ${citation.section}`}
-                                  {citation.page_number && ` (Page ${citation.page_number})`}
-                                </div>
-                                <p className="opacity-80 line-clamp-2">{citation.content}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </>
+                  {message.role === "assistant" && message.citations && message.citations.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-border/20">
+                      <p className="text-xs font-semibold mb-2 opacity-80">References:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {message.citations.map((citation: any, citIndex: number) => (
+                          <a
+                            key={citIndex}
+                            href={`/#p=${citation.page_number ?? 1}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="underline text-xs hover:opacity-70 transition-opacity"
+                          >
+                            [{citIndex + 1}] p.{citation.page_number ?? "?"}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </Card>
               </div>
