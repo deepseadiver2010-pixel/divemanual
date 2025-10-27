@@ -365,7 +365,7 @@ export default function DiveBuddyAI() {
             New Chat
           </Button>
         </div>
-        <ScrollArea className="flex-1 p-2">
+        <ScrollArea className="flex-1 pl-2 pr-1 py-2">
           {sessions.map((session) => (
             <div
               key={session.id}
@@ -377,7 +377,7 @@ export default function DiveBuddyAI() {
             >
               <button
                 onClick={() => setCurrentSessionId(session.id)}
-                className="w-full text-left p-3 pr-10"
+                className="w-full text-left p-3 pr-12"
               >
                 <div className="flex items-start gap-2">
                   <MessageCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
@@ -394,7 +394,7 @@ export default function DiveBuddyAI() {
                   e.stopPropagation();
                   deleteSession(session.id);
                 }}
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-destructive/20 rounded transition-colors"
+                className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 hover:bg-destructive/20 rounded transition-colors"
                 title="Delete chat"
               >
                 <Trash2 className="w-4 h-4 text-red-500" />
