@@ -367,35 +367,39 @@ export default function DiveBuddyAI() {
         </div>
         <ScrollArea className="flex-1 p-2">
           {sessions.map((session) => (
-            <button
+            <div
               key={session.id}
-              onClick={() => setCurrentSessionId(session.id)}
-              className={`w-full text-left p-3 rounded-lg mb-2 transition-colors group relative ${
+              className={`w-full rounded-lg mb-2 transition-colors relative ${
                 currentSessionId === session.id
                   ? "bg-[hsl(var(--navy-accent)/0.1)] text-[hsl(var(--navy-accent))] border border-[hsl(var(--navy-accent)/0.3)]"
                   : "hover:bg-muted/50"
               }`}
             >
-              <div className="flex items-start gap-2">
-                <MessageCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{session.title || "New Chat"}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(session.updated_at).toLocaleDateString()}
-                  </p>
+              <button
+                onClick={() => setCurrentSessionId(session.id)}
+                className="w-full text-left p-3 pr-10"
+              >
+                <div className="flex items-start gap-2">
+                  <MessageCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{session.title || "New Chat"}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(session.updated_at).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteSession(session.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
-                  title="Delete chat"
-                >
-                  <Trash2 className="w-4 h-4 text-destructive" />
-                </button>
-              </div>
-            </button>
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  deleteSession(session.id);
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 hover:bg-destructive/20 rounded transition-colors"
+                title="Delete chat"
+              >
+                <Trash2 className="w-4 h-4 text-red-500" />
+              </button>
+            </div>
           ))}
         </ScrollArea>
       </div>
