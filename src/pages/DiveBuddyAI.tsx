@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Plus, MessageCircle, Loader2 } from "lucide-react";
+import { Send, Plus, MessageCircle, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -205,6 +205,39 @@ export default function DiveBuddyAI() {
     }
   };
 
+  const deleteSession = async (sessionId: string) => {
+    try {
+      const { error } = await supabase
+        .from("conversations")
+        .delete()
+        .eq("id", sessionId);
+
+      if (error) throw error;
+
+      // Update local state
+      setSessions((prev) => prev.filter((s) => s.id !== sessionId));
+      
+      // If deleted session was active, clear it or switch to another
+      if (currentSessionId === sessionId) {
+        const remainingSessions = sessions.filter((s) => s.id !== sessionId);
+        setCurrentSessionId(remainingSessions.length > 0 ? remainingSessions[0].id : null);
+        setMessages([]);
+      }
+
+      toast({
+        title: "Success",
+        description: "Chat deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting session:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete chat",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
@@ -337,7 +370,7 @@ export default function DiveBuddyAI() {
             <button
               key={session.id}
               onClick={() => setCurrentSessionId(session.id)}
-              className={`w-full text-left p-3 rounded-lg mb-2 transition-colors ${
+              className={`w-full text-left p-3 rounded-lg mb-2 transition-colors group relative ${
                 currentSessionId === session.id
                   ? "bg-[hsl(var(--navy-accent)/0.1)] text-[hsl(var(--navy-accent))] border border-[hsl(var(--navy-accent)/0.3)]"
                   : "hover:bg-muted/50"
@@ -351,6 +384,16 @@ export default function DiveBuddyAI() {
                     {new Date(session.updated_at).toLocaleDateString()}
                   </p>
                 </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    deleteSession(session.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded"
+                  title="Delete chat"
+                >
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </button>
               </div>
             </button>
           ))}
