@@ -365,41 +365,39 @@ export default function DiveBuddyAI() {
             New Chat
           </Button>
         </div>
-        <ScrollArea className="flex-1 pl-2 pr-1 py-2">
+        <ScrollArea className="flex-1 p-2">
           {sessions.map((session) => (
-            <div
+            <button
               key={session.id}
-              className={`w-full rounded-lg mb-2 transition-colors relative ${
+              onClick={() => setCurrentSessionId(session.id)}
+              className={`w-full rounded-lg mb-2 p-3 transition-colors text-left ${
                 currentSessionId === session.id
                   ? "bg-[hsl(var(--navy-accent)/0.1)] text-[hsl(var(--navy-accent))] border border-[hsl(var(--navy-accent)/0.3)]"
                   : "hover:bg-muted/50"
               }`}
             >
-              <button
-                onClick={() => setCurrentSessionId(session.id)}
-                className="w-full text-left p-3 pr-12"
-              >
-                <div className="flex items-start gap-2">
-                  <MessageCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{session.title || "New Chat"}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {new Date(session.updated_at).toLocaleDateString()}
-                    </p>
-                  </div>
+              <div className="flex items-start gap-2">
+                <div className="flex flex-col items-center gap-1">
+                  <MessageCircle className="w-4 h-4 flex-shrink-0" />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteSession(session.id);
+                    }}
+                    className="p-0.5 hover:bg-destructive/20 rounded transition-colors"
+                    title="Delete chat"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                  </button>
                 </div>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  deleteSession(session.id);
-                }}
-                className="absolute right-1 top-1/2 -translate-y-1/2 p-1.5 hover:bg-destructive/20 rounded transition-colors"
-                title="Delete chat"
-              >
-                <Trash2 className="w-4 h-4 text-red-500" />
-              </button>
-            </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{session.title || "New Chat"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(session.updated_at).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            </button>
           ))}
         </ScrollArea>
       </div>
