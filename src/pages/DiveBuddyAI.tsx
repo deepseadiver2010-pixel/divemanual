@@ -8,14 +8,19 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
 async function askDiveManual(q: string) {
-  const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-manual?q=${encodeURIComponent(q)}`;
-  const headers = {
-    apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY!,
-    Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY!}`,
+  const { data, error } = await supabase.functions.invoke('chat', {
+    body: { message: q },
+  });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+
+  // normalize to current UI shape
+  return {
+    question: q,
+    answer: data.response,
+    citations: data.citations || "",
+    results: data.citations || [], // your renderer maps from message.citations
   };
-  const r = await fetch(url, { headers });
-  if (!r.ok) throw new Error(await r.text());
-  return r.json() as Promise<{ question:string; answer:string; citations:string; results:any[] }>;
 }
 
 interface Message {
