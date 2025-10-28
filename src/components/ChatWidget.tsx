@@ -110,10 +110,38 @@ export const ChatWidget = () => {
     setIsLoading(true);
 
     try {
+      // Create conversation if this is the first message
+      let currentSessionId = sessionId;
+      if (!currentSessionId) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            throw new Error('Please sign in to use the chat');
+          }
+
+          const { data: conversationData, error: conversationError } = await supabase
+            .from('conversations')
+            .insert({
+              user_id: user.id,
+              title: input.substring(0, 50) + (input.length > 50 ? '...' : '')
+            })
+            .select()
+            .single();
+
+          if (conversationError) throw conversationError;
+          
+          currentSessionId = conversationData.id;
+          setSessionId(currentSessionId);
+        } catch (convError) {
+          console.error('Error creating conversation:', convError);
+          throw new Error('Failed to start chat session. Please try again.');
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('chat', {
         body: { 
           message: input,
-          sessionId: sessionId
+          sessionId: currentSessionId
         }
       });
 
@@ -129,11 +157,6 @@ export const ChatWidget = () => {
 
       if (data?.error) {
         throw new Error(data.error);
-      }
-
-      // Update session ID if it's a new session
-      if (data.sessionId && !sessionId) {
-        setSessionId(data.sessionId);
       }
 
       const aiMessage: Message = {
