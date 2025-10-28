@@ -85,6 +85,12 @@ serve(async (req) => {
     }
 
     // Generate embedding for semantic search using OpenAI
+    // Include recent conversation context for better follow-up question understanding
+    const recentMessages = conversationHistory.slice(-4); // Last 4 messages (2 exchanges)
+    const contextualQuery = recentMessages.length > 0
+      ? `${recentMessages.map(m => m.content).join(' ')} ${message}`.substring(0, 8000)
+      : message.substring(0, 8000);
+
     const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
       headers: {
@@ -93,7 +99,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'text-embedding-3-small',
-        input: message.substring(0, 8000)
+        input: contextualQuery
       }),
     });
 
@@ -121,7 +127,7 @@ serve(async (req) => {
     // Perform semantic search on chunks using RPC
     const { data: chunks, error: searchError } = await supabase.rpc('match_dive_chunks', {
       query_embedding: embedding,
-      match_threshold: 0.20,
+      match_threshold: 0.15, // More lenient for conversational follow-up questions
       match_count: 5
     });
       
