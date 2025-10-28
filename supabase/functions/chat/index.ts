@@ -86,10 +86,12 @@ serve(async (req) => {
 
     // Generate embedding for semantic search using OpenAI
     // Include recent conversation context for better follow-up question understanding
-    const recentMessages = conversationHistory.slice(-4); // Last 4 messages (2 exchanges)
+    const recentMessages = conversationHistory?.slice(-4) || []; // Last 4 messages (2 exchanges) - null-safe
     const contextualQuery = recentMessages.length > 0
       ? `${recentMessages.map(m => m.content).join(' ')} ${message}`.substring(0, 8000)
       : message.substring(0, 8000);
+
+    console.log(`🔍 Generating embedding for query (${contextualQuery.length} chars)`);
 
     const embeddingResponse = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
@@ -105,7 +107,7 @@ serve(async (req) => {
 
     if (!embeddingResponse.ok) {
       const errorText = await embeddingResponse.text();
-      console.error("OpenAI embeddings error:", embeddingResponse.status, errorText);
+      console.error("❌ OpenAI embeddings error:", embeddingResponse.status, errorText);
       
       // Return structured error for client handling
       return new Response(
@@ -123,20 +125,32 @@ serve(async (req) => {
 
     const embeddingData = await embeddingResponse.json();
     const embedding = embeddingData.data[0].embedding;
+    console.log(`✅ Embedding generated (${embedding.length} dimensions)`);
 
     // Perform semantic search on chunks using RPC
+    console.log(`🔎 Searching document_chunks with threshold 0.15, limit 5`);
     const { data: chunks, error: searchError } = await supabase.rpc('match_dive_chunks', {
       query_embedding: embedding,
       match_threshold: 0.15, // More lenient for conversational follow-up questions
       match_count: 5
     });
       
-    if (searchError) throw searchError;
+    if (searchError) {
+      console.error("❌ Search RPC error:", searchError);
+      throw searchError;
+    }
+
+    console.log(`📚 Found ${chunks?.length || 0} relevant chunks`);
+    if (chunks && chunks.length > 0) {
+      console.log(`   Top result: ${chunks[0].volume} - ${chunks[0].chapter} (similarity: ${chunks[0].similarity?.toFixed(3)})`);
+    }
 
     // Build context from retrieved chunks
     const context = chunks?.map((chunk: any) => 
       `${chunk.volume || 'Unknown'} - ${chunk.chapter || 'Unknown'} - Page ${chunk.page_number}:\n${chunk.text}`
     ).join('\n\n') || "";
+    
+    console.log(`📝 Built context: ${context.length} characters from ${chunks?.length || 0} chunks`);
 
     // Call Lovable AI with RAG context
     const systemPrompt = `You are a Navy Diving Manual AI assistant. You must ONLY answer questions based on the provided manual content. 
