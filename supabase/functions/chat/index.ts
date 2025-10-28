@@ -127,53 +127,163 @@ serve(async (req) => {
     const embedding = embeddingData.data[0].embedding;
     console.log(`✅ Embedding generated (${embedding.length} dimensions)`);
 
-    // Perform semantic search on chunks using RPC
-    console.log(`🔎 Searching document_chunks with threshold 0.12, limit 8`);
-    const { data: chunks, error: searchError } = await supabase.rpc('match_dive_chunks', {
-      query_embedding: embedding,
-      match_threshold: 0.12,
-      match_count: 8
-    });
-      
-    if (searchError) {
-      console.error("❌ Search RPC error:", searchError);
-      throw searchError;
+    // === ENHANCED MULTI-STRATEGY SEARCH ===
+    
+    // Step 1: Extract keywords and phrases from query
+    const extractKeywords = (query: string): string[] => {
+      const stopWords = ['what', 'is', 'are', 'the', 'a', 'an', 'how', 'why', 'when', 'where', 'can', 'do', 'does', 'could', 'would', 'should'];
+      const words = query.toLowerCase()
+        .replace(/[^\w\s]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 3 && !stopWords.includes(w));
+      return words;
+    };
+
+    const keywords = extractKeywords(message);
+    const phrases: string[] = [];
+    
+    // Extract quoted phrases
+    const quotedPhrases = message.match(/"([^"]+)"/g);
+    if (quotedPhrases) {
+      phrases.push(...quotedPhrases.map((p: string) => p.replace(/"/g, '').toLowerCase()));
+    }
+    
+    // Add full query as a phrase (cleaned)
+    const cleanQuery = message.toLowerCase().replace(/[?!.,;]/g, '').trim();
+    if (cleanQuery.length > 5 && !phrases.includes(cleanQuery)) {
+      phrases.push(cleanQuery);
     }
 
-    let finalChunks = chunks || [];
-    console.log(`📚 Found ${finalChunks.length || 0} relevant chunks (semantic)`);
+    console.log(`🔍 Extracted keywords: [${keywords.join(', ')}]`);
+    console.log(`📝 Extracted phrases: [${phrases.join(', ')}]`);
 
-    if (!finalChunks || finalChunks.length < 3) {
-      console.log(`🧭 Fallback keyword search in document_chunks`);
-      const lower = message.toLowerCase();
-      let builder = supabase
-        .from('document_chunks')
-        .select('document_id, section_label, text, page_number, volume, chapter')
-        .limit(8);
+    // Step 2: Run semantic and keyword searches in parallel
+    console.log(`🔎 Running parallel searches: semantic (threshold 0.08, limit 20) + keyword (limit 15)`);
+    
+    const [semanticResult, keywordResult] = await Promise.all([
+      // Semantic search with wider net
+      supabase.rpc('match_dive_chunks', {
+        query_embedding: embedding,
+        match_threshold: 0.08,
+        match_count: 20
+      }),
+      
+      // Enhanced keyword search
+      (async () => {
+        if (keywords.length === 0) return { data: [], error: null };
+        
+        // Build OR query for all keywords
+        const orConditions = keywords.map(kw => `text.ilike.%${kw}%`).join(',');
+        return await supabase
+          .from('document_chunks')
+          .select('id, document_id, section_label, text, page_number, volume, chapter')
+          .or(orConditions)
+          .limit(15);
+      })()
+    ]);
 
-      if (lower.includes('oxygen')) builder = builder.ilike('text', '%oxygen%');
-      if (lower.includes('toxicity')) builder = builder.ilike('text', '%toxicity%');
+    if (semanticResult.error) {
+      console.error("❌ Semantic search error:", semanticResult.error);
+      throw semanticResult.error;
+    }
 
-      if (!lower.includes('oxygen') && !lower.includes('toxicity')) {
-        const firstKeyword = (message.match(/[A-Za-z]{4,}/g) || [])[0];
-        if (firstKeyword) {
-          builder = builder.ilike('text', `%${firstKeyword}%`);
+    if (keywordResult.error) {
+      console.error("❌ Keyword search error:", keywordResult.error);
+    }
+
+    console.log(`📊 Semantic results: ${semanticResult.data?.length || 0}`);
+    console.log(`📊 Keyword results: ${keywordResult.data?.length || 0}`);
+
+    // Step 3: Score, merge, and deduplicate results
+    const seen = new Set<string>();
+    const scoredChunks: any[] = [];
+
+    // Process keyword results with scoring
+    for (const chunk of keywordResult.data || []) {
+      if (seen.has(chunk.id)) continue;
+      seen.add(chunk.id);
+      
+      let score = 0;
+      const lowerText = chunk.text.toLowerCase();
+      
+      // Exact phrase match (highest priority)
+      for (const phrase of phrases) {
+        if (lowerText.includes(phrase)) {
+          score += 100;
+          
+          // Bonus if phrase appears early (likely a definition)
+          const position = lowerText.indexOf(phrase);
+          if (position < 500) score += 50;
+          if (position < 200) score += 25; // Extra bonus for very early appearance
         }
       }
-
-      const { data: kwResults, error: kwError } = await builder;
-      if (kwError) {
-        console.error('❌ Keyword search error:', kwError);
-      } else if (kwResults && kwResults.length > 0) {
-        finalChunks = kwResults;
+      
+      // Individual keyword matches
+      for (const keyword of keywords) {
+        const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+        const matches = (lowerText.match(regex) || []).length;
+        score += matches * 5;
       }
-      console.log(`📚 Fallback returned ${kwResults?.length || 0} chunks`);
+      
+      scoredChunks.push({ ...chunk, score, source: 'keyword' });
     }
 
-    // Build context from retrieved chunks
-    const context = finalChunks?.map((chunk: any) => 
-      `${chunk.volume || 'Unknown'} - ${chunk.chapter || 'Unknown'} - Page ${chunk.page_number}:\n${chunk.text}`
-    ).join('\n\n') || "";
+    // Process semantic results
+    for (const chunk of semanticResult.data || []) {
+      if (seen.has(chunk.id)) continue;
+      seen.add(chunk.id);
+      
+      // Normalize similarity to comparable scale (0-100)
+      const score = (chunk.similarity || 0) * 50;
+      
+      scoredChunks.push({ 
+        ...chunk, 
+        score, 
+        source: 'semantic',
+        similarity: chunk.similarity 
+      });
+    }
+
+    // Sort by score (highest first) and take top 12
+    scoredChunks.sort((a, b) => b.score - a.score);
+    const finalChunks = scoredChunks.slice(0, 12);
+
+    console.log(`🎯 Final chunks after deduplication: ${finalChunks.length}`);
+    if (finalChunks.length > 0) {
+      console.log(`   Top result: score=${finalChunks[0].score.toFixed(2)}, source=${finalChunks[0].source}, volume=${finalChunks[0].volume || 'N/A'}`);
+    }
+
+    // Step 4: Build context with smart window extraction for exact matches
+    const buildFocusedContext = (chunks: any[], searchPhrases: string[]) => {
+      return chunks.map((chunk: any) => {
+        let contextText = chunk.text;
+        
+        // If this chunk contains an exact phrase match, extract a focused window
+        for (const phrase of searchPhrases) {
+          const lowerText = chunk.text.toLowerCase();
+          const phraseIndex = lowerText.indexOf(phrase);
+          
+          if (phraseIndex !== -1) {
+            // Extract 800 chars before and after the phrase for focused context
+            const start = Math.max(0, phraseIndex - 800);
+            const end = Math.min(chunk.text.length, phraseIndex + phrase.length + 800);
+            
+            const prefix = start > 0 ? '...' : '';
+            const suffix = end < chunk.text.length ? '...' : '';
+            contextText = prefix + chunk.text.substring(start, end) + suffix;
+            
+            console.log(`   🎯 Extracted ${end - start} char window for phrase "${phrase}" in chunk ${chunk.id?.substring(0, 8)}`);
+            break;
+          }
+        }
+        
+        return `${chunk.volume || 'Unknown'} - ${chunk.chapter || 'Unknown'} - Page ${chunk.page_number}:\n${contextText}`;
+      }).join('\n\n');
+    };
+    
+    const context = finalChunks?.length > 0 
+      ? buildFocusedContext(finalChunks, phrases) 
+      : "";
     
     console.log(`📝 Built context: ${context.length} characters from ${finalChunks?.length || 0} chunks`);
 
@@ -336,7 +446,7 @@ Title (no quotes, no punctuation):`;
         user_id: user.id,
         query: message,
         search_type: 'semantic',
-        results_count: chunks?.length || 0
+        results_count: finalChunks?.length || 0
       });
 
     return new Response(
