@@ -128,11 +128,11 @@ serve(async (req) => {
     console.log(`✅ Embedding generated (${embedding.length} dimensions)`);
 
     // Perform semantic search on chunks using RPC
-    console.log(`🔎 Searching document_chunks with threshold 0.15, limit 5`);
+    console.log(`🔎 Searching document_chunks with threshold 0.12, limit 8`);
     const { data: chunks, error: searchError } = await supabase.rpc('match_dive_chunks', {
       query_embedding: embedding,
-      match_threshold: 0.15, // More lenient for conversational follow-up questions
-      match_count: 5
+      match_threshold: 0.12,
+      match_count: 8
     });
       
     if (searchError) {
@@ -140,17 +140,42 @@ serve(async (req) => {
       throw searchError;
     }
 
-    console.log(`📚 Found ${chunks?.length || 0} relevant chunks`);
-    if (chunks && chunks.length > 0) {
-      console.log(`   Top result: ${chunks[0].volume} - ${chunks[0].chapter} (similarity: ${chunks[0].similarity?.toFixed(3)})`);
+    let finalChunks = chunks || [];
+    console.log(`📚 Found ${finalChunks.length || 0} relevant chunks (semantic)`);
+
+    if (!finalChunks || finalChunks.length < 3) {
+      console.log(`🧭 Fallback keyword search in document_chunks`);
+      const lower = message.toLowerCase();
+      let builder = supabase
+        .from('document_chunks')
+        .select('document_id, section_label, text, page_number, volume, chapter')
+        .limit(8);
+
+      if (lower.includes('oxygen')) builder = builder.ilike('text', '%oxygen%');
+      if (lower.includes('toxicity')) builder = builder.ilike('text', '%toxicity%');
+
+      if (!lower.includes('oxygen') && !lower.includes('toxicity')) {
+        const firstKeyword = (message.match(/[A-Za-z]{4,}/g) || [])[0];
+        if (firstKeyword) {
+          builder = builder.ilike('text', `%${firstKeyword}%`);
+        }
+      }
+
+      const { data: kwResults, error: kwError } = await builder;
+      if (kwError) {
+        console.error('❌ Keyword search error:', kwError);
+      } else if (kwResults && kwResults.length > 0) {
+        finalChunks = kwResults;
+      }
+      console.log(`📚 Fallback returned ${kwResults?.length || 0} chunks`);
     }
 
     // Build context from retrieved chunks
-    const context = chunks?.map((chunk: any) => 
+    const context = finalChunks?.map((chunk: any) => 
       `${chunk.volume || 'Unknown'} - ${chunk.chapter || 'Unknown'} - Page ${chunk.page_number}:\n${chunk.text}`
     ).join('\n\n') || "";
     
-    console.log(`📝 Built context: ${context.length} characters from ${chunks?.length || 0} chunks`);
+    console.log(`📝 Built context: ${context.length} characters from ${finalChunks?.length || 0} chunks`);
 
     // Call Lovable AI with RAG context
     const systemPrompt = `You are a Navy Diving Manual AI assistant. You must ONLY answer questions based on the provided manual content. 
@@ -159,7 +184,7 @@ CRITICAL RULES:
 1. Only use information from the manual context provided below
 2. Always include exact citations in this format: (Volume X, Chapter Y, Page Z)
 3. When source contains WARNING/CAUTION/NOTE, highlight them prominently
-4. If information is not in the provided context, say "I don't have information about that in the manual. Please check [suggest relevant section]"
+4. If information is not in the provided context, say what is missing and suggest the most relevant section to check. If there is partial context, answer using it rather than saying you have no information.
 5. Never provide information from outside the manual
 
 Manual Context:
@@ -177,7 +202,7 @@ ${context}`;
           { role: "system", content: systemPrompt },
           ...conversationHistory.map(msg => ({ role: msg.role, content: msg.content }))
         ],
-        temperature: 0.7,
+        temperature: 0.3,
         max_tokens: 1000,
       }),
     });
@@ -238,15 +263,15 @@ ${context}`;
     const aiResponse = aiData.choices[0].message.content;
 
     // Extract citations from chunks and format them (VA app format)
-    const citations = chunks?.map((chunk: any) => ({
+    const citations = (typeof finalChunks !== 'undefined' ? finalChunks : []).map((chunk: any) => ({
       document_id: chunk.document_id,
-      document_title: chunk.document_title || `${chunk.volume} - ${chunk.chapter}`,
+      document_title: chunk.document_title || `${chunk.volume || ''} - ${chunk.chapter || ''}` || 'Navy Diving Manual Rev 7',
       snippet: chunk.text?.substring(0, 200) || "",
       section_label: chunk.section_label || null,
       page_number: chunk.page_number,
       volume: chunk.volume,
       chapter: chunk.chapter
-    })) || [];
+    }));
 
     // Save AI response
     const { error: aiMessageError } = await supabase
