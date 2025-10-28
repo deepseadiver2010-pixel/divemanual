@@ -49,16 +49,39 @@ serve(async (req) => {
       currentSessionId = newSession.id;
     }
 
-    // Save user message
-    const { error: messageError } = await supabase
-      .from('chat_messages')
-      .insert({
-        conversation_id: currentSessionId,
-        role: 'user',
-        content: message
-      });
-      
-    if (messageError) throw messageError;
+    // Save user message with robust fallback if conversation ID is invalid
+    let triedRecoverFromMissingConversation = false;
+    const insertUserMessage = async () => {
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          conversation_id: currentSessionId,
+          role: 'user',
+          content: message
+        });
+      return error;
+    };
+
+    let userMsgError = await insertUserMessage();
+
+    // If the provided conversation_id doesn't exist (FK violation), create one and retry once
+    if (userMsgError && (userMsgError as any).code === '23503') {
+      console.warn('⚠️ conversation_id missing, creating a new conversation and retrying.');
+      triedRecoverFromMissingConversation = true;
+      const { data: newSession, error: convCreateError } = await supabase
+        .from('conversations')
+        .insert({
+          user_id: user.id,
+          title: message.substring(0, 50) + (message.length > 50 ? '...' : '')
+        })
+        .select()
+        .single();
+      if (convCreateError) throw convCreateError;
+      currentSessionId = newSession.id;
+      userMsgError = await insertUserMessage();
+    }
+
+    if (userMsgError) throw userMsgError;
 
     // Get conversation history (last 10 messages only)
     const { data: messages, error: historyError } = await supabase
@@ -383,16 +406,35 @@ ${context}`;
       chapter: chunk.chapter
     }));
 
-    // Save AI response
-    const { error: aiMessageError } = await supabase
-      .from('chat_messages')
-      .insert({
-        conversation_id: currentSessionId,
-        role: 'assistant',
-        content: aiResponse,
-        citations: citations
-      });
-      
+    // Save AI response (retry if conversation was recreated earlier)
+    const insertAssistantMessage = async () => {
+      const { error } = await supabase
+        .from('chat_messages')
+        .insert({
+          conversation_id: currentSessionId,
+          role: 'assistant',
+          content: aiResponse,
+          citations: citations
+        });
+      return error;
+    };
+
+    let aiMessageError = await insertAssistantMessage();
+    if (aiMessageError && (aiMessageError as any).code === '23503') {
+      console.warn('⚠️ assistant insert FK issue, creating conversation and retrying.');
+      const { data: newSession, error: convCreateError } = await supabase
+        .from('conversations')
+        .insert({
+          user_id: user.id,
+          title: message.substring(0, 50) + (message.length > 50 ? '...' : '')
+        })
+        .select()
+        .single();
+      if (convCreateError) throw convCreateError;
+      currentSessionId = newSession.id;
+      aiMessageError = await insertAssistantMessage();
+    }
+
     if (aiMessageError) throw aiMessageError;
 
     // Auto-title generation after first exchange
